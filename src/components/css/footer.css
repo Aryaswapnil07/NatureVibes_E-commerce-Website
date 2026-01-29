@@ -1,0 +1,156 @@
+/* Note: Assuming these CSS variables are defined globally (e.g., in App.css or Navbar.css). 
+   If not, un-comment the :root block below. */
+
+/* :root{
+  --green:#2e7d32;
+  --dark:#1b1b1b;
+} 
+*/
+
+.new-footer {
+  background: #ffffff;
+  color: var(--dark);
+  padding: 80px 8% 40px;
+  border-top: 1px solid #eee;
+  font-family: 'Poppins', sans-serif;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 50px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Left Column */
+.footer-col-left {
+  flex: 1;
+  min-width: 300px;
+}
+
+.footer-heading {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 25px;
+  color: var(--dark);
+}
+
+.contact-link {
+  display: block;
+  width: fit-content;
+  text-decoration: none;
+  color: var(--dark);
+  font-size: 1rem;
+  margin-bottom: 20px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #ccc; 
+  transition: all 0.3s;
+}
+
+.contact-link:hover {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+/* Right Column */
+.footer-col-right {
+  flex: 1;
+  min-width: 300px;
+  max-width: 500px;
+}
+
+.newsletter-form {
+  position: relative;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  align-items: center;
+}
+
+.newsletter-input {
+  width: 100%;
+  border: none;
+  padding: 10px 0;
+  font-size: 1rem;
+  outline: none;
+  font-family: 'Poppins', sans-serif;
+  color: #333;
+  background: transparent;
+}
+
+.newsletter-input::placeholder {
+  color: #666;
+}
+
+.newsletter-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dark);
+  font-size: 1.2rem;
+  transition: 0.3s;
+  display: flex;
+  align-items: center;
+}
+
+.newsletter-btn:hover {
+  color: var(--green);
+  transform: translateX(5px);
+}
+
+.footer-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--dark);
+  margin-bottom: 40px;
+}
+
+/* Social Icons */
+.social-row {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+}
+
+.social-icon {
+  color: var(--dark);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  transition: 0.3s;
+}
+
+.social-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.social-icon:hover {
+  color: var(--green);
+  transform: translateY(-3px);
+}
+
+/* Copyright Bar (Previously inline styles) */
+.footer-copyright {
+  text-align: center;
+  padding-top: 40px;
+  color: #888;
+  font-size: 0.8rem;
+  border-top: 1px solid #f9f9f9;
+  margin-top: 30px;
+}
+
+@media(max-width: 768px){
+  .footer-content {
+    flex-direction: column;
+    gap: 40px;
+  }
+  .new-footer {
+    padding: 40px 20px;
+  }
+}
