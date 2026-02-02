@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Leaf, Upload, DollarSign, Sun, Droplets, LayoutGrid, PlusCircle, Settings } from 'lucide-react';
 
+
 const AdminAddPlant = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -240,4 +241,4 @@ const AdminAddPlant = () => {
   );
 };
 
-export default AdminAddPlant; 
+export default AdminAddPlant;   

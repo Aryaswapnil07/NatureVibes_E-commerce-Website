@@ -10,6 +10,7 @@ import Footer from "./components/Footer";
 import LoginModal from "./components/LoginModal";
 import CartSidebar from "./components/CartSidebar";
 import StickyCartBar from "./components/StickyCartBar";
+import AdminAddPlant from "./components/AdminaddPlant";
 
 function App() {
   // -------------------- STATE --------------------
@@ -141,6 +142,9 @@ function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
+
+
+    
     </>
   );
 }
