@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Routes, Route } from "react-router-dom"; // ✅ NO BrowserRouter here
 import "./App.css";
 
 import { categories, furniture } from "./data";
@@ -10,25 +11,20 @@ import Footer from "./components/Footer";
 import LoginModal from "./components/LoginModal";
 import CartSidebar from "./components/CartSidebar";
 import StickyCartBar from "./components/StickyCartBar";
-import AdminAddPlant from "./components/AdminaddPlant";
+import NotFound from "./components/NotFound";
 
 function App() {
-  // -------------------- STATE --------------------
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Cart (LocalStorage)
   const [cartItems, setCartItems] = useState(() => {
     const saved = localStorage.getItem("natureVibesCart");
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Persist cart
   useEffect(() => {
     localStorage.setItem("natureVibesCart", JSON.stringify(cartItems));
   }, [cartItems]);
 
-  // -------------------- CART HANDLERS --------------------
   const handleAddToCart = (product) => {
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
@@ -61,9 +57,49 @@ function App() {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const cartCount = cartItems.reduce(
+    (acc, item) => acc + item.quantity,
+    0
+  );
 
-  // -------------------- RENDER --------------------
+  /* ---------------- Home Page Content ---------------- */
+  const HomeContent = () => (
+    <>
+      <Hero />
+
+      <section id="full-catalog">
+        <div className="section-header">
+          <h2>Full Plant Catalog</h2>
+          <p>Every variety we grow, curated for your home.</p>
+        </div>
+
+        <ProductSection {...categories.indoor} onAddToCart={handleAddToCart} />
+        <ProductSection {...categories.foliage} onAddToCart={handleAddToCart} />
+        <ProductSection {...categories.outdoor} onAddToCart={handleAddToCart} />
+        <ProductSection {...categories.pots} onAddToCart={handleAddToCart} />
+      </section>
+
+      <section id="furniture" style={{ background: "#f4f8f4" }}>
+        <div className="section-header">
+          <h2>Premium Furniture</h2>
+          <p>Handcrafted Sheesham & Teak wood pieces.</p>
+        </div>
+
+        <ProductSection {...furniture} onAddToCart={handleAddToCart} />
+      </section>
+
+      <section className="about-section" id="about">
+        <div className="about-content">
+          <h2>About NatureVibes</h2>
+          <p>
+            NatureVibes blends modern furniture with living greenery to bring
+            harmony, calm, and freshness into your home.
+          </p>
+        </div>
+      </section>
+    </>
+  );
+
   return (
     <>
       <Navbar
@@ -71,60 +107,14 @@ function App() {
         cartCount={cartCount}
       />
 
-      <Hero />
-
-      {/* Full Catalog */}
-      <section id="full-catalog">
-        <div className="section-header">
-          <h2>Full Plant Catalog</h2>
-          <p>Every variety we grow, curated for your home.</p>
-        </div>
-
-        <ProductSection
-          {...categories.indoor}
-          onAddToCart={handleAddToCart}
-        />
-        <ProductSection
-          {...categories.foliage}
-          onAddToCart={handleAddToCart}
-        />
-        <ProductSection
-          {...categories.outdoor}
-          onAddToCart={handleAddToCart}
-        />
-        <ProductSection
-          {...categories.pots}
-          onAddToCart={handleAddToCart}
-        />
-      </section>
-
-      {/* Furniture */}
-      <section id="furniture" style={{ background: "#f4f8f4" }}>
-        <div className="section-header">
-          <h2>Premium Furniture</h2>
-          <p>Handcrafted Sheesham & Teak wood pieces.</p>
-        </div>
-
-        <ProductSection
-          {...furniture}
-          onAddToCart={handleAddToCart}
-        />
-      </section>
-
-      {/* About */}
-      <section className="about-section" id="about">
-        <div className="about-content">
-          <h2>About NatureVibes</h2>
-          <p>
-            NatureVibes blends modern furniture with living greenery to create
-            calm, sustainable homes.
-          </p>
-        </div>
-      </section>
+      <Routes>
+        <Route path="/" element={<HomeContent />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
 
       <Footer />
 
-      {/* -------------------- OVERLAYS -------------------- */}
+      {/* Global Overlays */}
       <StickyCartBar
         cartItems={cartItems}
         onOpenCart={() => setIsCartOpen(true)}
@@ -142,9 +132,6 @@ function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
-
-
-    
     </>
   );
 }
