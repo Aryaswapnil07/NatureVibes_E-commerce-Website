@@ -1,4 +1,4 @@
-    import React from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Leaf, Home, RefreshCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
