@@ -19,6 +19,7 @@ const NotFound = () => {
           repeatType: "mirror" 
         }}
       >
+        
         <Leaf size={120} color="#4CAF50" strokeWidth={1.5} />
       </motion.div>
 
