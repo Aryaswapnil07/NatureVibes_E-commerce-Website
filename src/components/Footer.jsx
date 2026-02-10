@@ -19,7 +19,7 @@ const Footer = () => {
           </a>
           
           <a href="mailto:support@naturevibes.com" className="contact-link">
-            Email: support@naturevibes.com
+            Email: support@naturevibes.com  
           </a>
         </div>
 

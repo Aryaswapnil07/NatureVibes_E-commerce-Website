@@ -201,3 +201,17 @@ export const furniture = {
     },
   ],
 };
+
+export const products = [
+  {
+    id: 1,
+    title: "Sansevieria Laurentii",
+    category: "Indoor",
+    price: 499,
+    oldPrice: 699,
+    image: "/images/snake-plant.jpg",
+    images: ["/img1.jpg", "/img2.jpg", "/img3.jpg"], // For the left-side gallery
+    description: "A hardy indoor plant...",
+  },
+  // ... rest of your 40+ items
+];
