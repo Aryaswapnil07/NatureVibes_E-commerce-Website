@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // ✅ Import useNavigate
 
 const CartSidebar = ({ isOpen, onClose, cartItems, onUpdateQty, onRemove }) => {
+  const navigate = useNavigate(); // ✅ Initialize navigation hook
+
   // Calculate Subtotal
   const total = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   
@@ -11,6 +14,14 @@ const CartSidebar = ({ isOpen, onClose, cartItems, onUpdateQty, onRemove }) => {
     acc[cat].push(item);
     return acc;
   }, {});
+
+  // ✅ Handle Navigation to Checkout
+  const handleCheckout = () => {
+    if (cartItems.length > 0) {
+      onClose(); // Close the sidebar first
+      navigate('/checkout'); // Redirect to checkout page
+    }
+  };
 
   return (
     <>
@@ -23,7 +34,10 @@ const CartSidebar = ({ isOpen, onClose, cartItems, onUpdateQty, onRemove }) => {
         
         <div className="cart-body-side">
           {cartItems.length === 0 ? (
-            <p className="empty-msg">Your garden cart is empty.<br/>Add some plants to bring it to life!</p>
+            <div className="empty-cart-container">
+              <span className="material-icons empty-icon">eco</span>
+              <p className="empty-msg">Your garden cart is empty.<br/>Add some plants to bring it to life!</p>
+            </div>
           ) : (
             Object.entries(groupedItems).map(([category, items]) => (
               <div key={category} className="cart-category-group">
@@ -52,7 +66,15 @@ const CartSidebar = ({ isOpen, onClose, cartItems, onUpdateQty, onRemove }) => {
             <span>Subtotal</span>
             <span>₹{total.toLocaleString('en-IN')}</span>
           </div>
-          <button className="checkout-btn">Proceed to Checkout</button>
+          
+          {/* ✅ Updated Checkout Button with onClick and disabled state */}
+          <button 
+            className={`checkout-btn ${cartItems.length === 0 ? 'disabled' : ''}`} 
+            onClick={handleCheckout}
+            disabled={cartItems.length === 0}
+          >
+            Proceed to Checkout
+          </button>
         </div>
       </div>
     </>

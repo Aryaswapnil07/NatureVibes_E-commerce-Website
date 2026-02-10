@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Routes, Route } from "react-router-dom";
 import "./App.css";
 
@@ -12,7 +12,8 @@ import LoginModal from "./components/LoginModal";
 import CartSidebar from "./components/CartSidebar";
 import StickyCartBar from "./components/StickyCartBar";
 import NotFound from "./components/NotFound";
-import ProductInfoPage from "./components/ProductInfo"; // ✅ Import your new page
+import ProductInfoPage from "./components/ProductInfo";
+import CheckoutPage from "./components/CheckoutPage"; // ✅ Import Checkout component
 
 function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -24,6 +25,11 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem("natureVibesCart", JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  // ✅ Global Total Calculation for Checkout
+  const totalAmount = useMemo(() => {
+    return cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   }, [cartItems]);
 
   const handleAddToCart = useCallback((product) => {
@@ -61,7 +67,7 @@ function App() {
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   /* ---------------- Home Page Content Component ---------------- */
-  const HomeContent = React.useMemo(() => {
+  const HomeContent = useMemo(() => {
     const Component = ({ onAddToCart }) => (
       <>
         <Hero />
@@ -101,17 +107,22 @@ function App() {
   return (
     <>
       <Navbar
-        onOpenLogin={React.useCallback(() => setIsModalOpen(true), [])}
+        onOpenLogin={useCallback(() => setIsModalOpen(true), [])}
         cartCount={cartCount}
       />
 
       <Routes>
         <Route path="/" element={<HomeContent onAddToCart={handleAddToCart} />} />
         
-        {/* ✅ NEW: Route for the Product Info Page */}
         <Route 
           path="/product/:productId" 
           element={<ProductInfoPage onAddToCart={handleAddToCart} />} 
+        />
+
+        {/* ✅ NEW: Checkout Route handles Address & Razorpay */}
+        <Route 
+          path="/checkout" 
+          element={<CheckoutPage cartItems={cartItems} totalAmount={totalAmount} />} 
         />
 
         <Route path="*" element={<NotFound />} />
@@ -121,12 +132,12 @@ function App() {
 
       <StickyCartBar
         cartItems={cartItems}
-        onOpenCart={React.useCallback(() => setIsCartOpen(true), [])}
+        onOpenCart={useCallback(() => setIsCartOpen(true), [])}
       />
 
       <CartSidebar
         isOpen={isCartOpen}
-        onClose={React.useCallback(() => setIsCartOpen(false), [])}
+        onClose={useCallback(() => setIsCartOpen(false), [])}
         cartItems={cartItems}
         onUpdateQty={handleUpdateQty}
         onRemove={handleRemove}
@@ -134,7 +145,7 @@ function App() {
 
       <LoginModal
         isOpen={isModalOpen}
-        onClose={React.useCallback(() => setIsModalOpen(false), [])}
+        onClose={useCallback(() => setIsModalOpen(false), [])}
       />
     </>
   );
