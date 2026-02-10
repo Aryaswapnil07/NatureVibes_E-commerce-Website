@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Routes, Route } from "react-router-dom"; // ✅ NO BrowserRouter here
+import { Routes, Route } from "react-router-dom";
 import "./App.css";
 
 import { categories, furniture } from "./data";
@@ -12,6 +12,7 @@ import LoginModal from "./components/LoginModal";
 import CartSidebar from "./components/CartSidebar";
 import StickyCartBar from "./components/StickyCartBar";
 import NotFound from "./components/NotFound";
+import ProductInfoPage from "./components/ProductInfo"; // ✅ Import your new page
 
 function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -57,25 +58,18 @@ function App() {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
-  const cartCount = cartItems.reduce(
-    (acc, item) => acc + item.quantity,
-    0
-  );
-  /* ---------------- Home Page Content ---------------- */
-  
-  // Extract HomeContent outside App's render to avoid remounting on every state change
-  // and wrap with React.memo so it only updates when `onAddToCart` changes.
+  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  /* ---------------- Home Page Content Component ---------------- */
   const HomeContent = React.useMemo(() => {
     const Component = ({ onAddToCart }) => (
       <>
         <Hero />
-
         <section id="full-catalog">
           <div className="section-header">
             <h2>Full Plant Catalog</h2>
             <p>Every variety we grow, curated for your home.</p>
           </div>
-
           <ProductSection {...categories.indoor} onAddToCart={onAddToCart} />
           <ProductSection {...categories.foliage} onAddToCart={onAddToCart} />
           <ProductSection {...categories.outdoor} onAddToCart={onAddToCart} />
@@ -87,7 +81,6 @@ function App() {
             <h2>Premium Furniture</h2>
             <p>Handcrafted Sheesham & Teak wood pieces.</p>
           </div>
-
           <ProductSection {...furniture} onAddToCart={onAddToCart} />
         </section>
 
@@ -102,7 +95,6 @@ function App() {
         </section>
       </>
     );
-
     return React.memo(Component);
   }, []);
 
@@ -115,12 +107,18 @@ function App() {
 
       <Routes>
         <Route path="/" element={<HomeContent onAddToCart={handleAddToCart} />} />
+        
+        {/* ✅ NEW: Route for the Product Info Page */}
+        <Route 
+          path="/product/:productId" 
+          element={<ProductInfoPage onAddToCart={handleAddToCart} />} 
+        />
+
         <Route path="*" element={<NotFound />} />
       </Routes>
 
       <Footer />
 
-      {/* Global Overlays */}
       <StickyCartBar
         cartItems={cartItems}
         onOpenCart={React.useCallback(() => setIsCartOpen(true), [])}
@@ -142,4 +140,4 @@ function App() {
   );
 }
 
-export default App;  
+export default App;
