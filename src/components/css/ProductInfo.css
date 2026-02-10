@@ -1,0 +1,217 @@
+/* Container and Layout */
+.nature-product-page {
+    min-height: 100vh;
+    background-color: #ffffff; /* Matching your theme */
+    padding: 120px 5% 60px; /* Space for navbar */
+    color: #1b1b1b;
+}
+
+.product-info-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 50px;
+}
+
+/* Gallery Styling */
+.gallery-section {
+    flex: 1.2;
+    min-width: 300px;
+}
+
+.gallery-layout-wrapper {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+}
+
+.thumbnail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.thumb-wrapper {
+    width: 75px;
+    height: 75px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #eeeeee;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.thumb-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.active-thumb {
+    border-color: #2e7d32; /* var(--green) */
+}
+
+.main-display-box {
+    flex: 1;
+    height: 500px;
+    background: #f8fcf8; /* var(--bg-card) */
+    border-radius: 24px;
+    border: 1px solid #eeeeee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.featured-image {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+    transition: transform 0.5s ease;
+}
+
+.featured-image:hover {
+    transform: scale(1.05);
+}
+
+/* Details Section Styling */
+.details-section {
+    flex: 1;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.category-label {
+    color: #2e7d32;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 2px;
+    font-size: 0.85rem;
+}
+
+.product-name {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 10px 0;
+}
+
+.product-price {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1b5e20;
+}
+
+.promo-badge {
+    background: #1b5e20;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    margin-left: 15px;
+}
+
+.description-block {
+    border-top: 1px solid #eeeeee;
+    padding-top: 25px;
+}
+
+.description-text {
+    color: #555555;
+    line-height: 1.6;
+}
+
+/* Trust Card Styling */
+.trust-features-card {
+    background: #f4f8f4;
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid #e8f5e9;
+}
+
+.trust-title {
+    margin-bottom: 15px;
+    color: #1b5e20;
+}
+
+.trust-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.trust-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #1b5e20;
+}
+
+/* Action Buttons */
+.action-button-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.btn-secondary-outline {
+    flex: 1;
+    height: 55px;
+    border: 2px solid #2e7d32;
+    background: transparent;
+    color: #2e7d32;
+    border-radius: 50px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: 0.3s;
+}
+
+.btn-secondary-outline:hover {
+    background: #2e7d32;
+    color: white;
+}
+
+.btn-primary-solid {
+    flex: 1;
+    height: 55px;
+    background: #1b1b1b;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: 0.3s;
+}
+
+.btn-primary-solid:hover {
+    background: #2e7d32;
+    transform: translateY(-3px);
+}
+
+/* Mobile Responsive */
+@media (max-width: 992px) {
+    .gallery-layout-wrapper {
+        flex-direction: column-reverse;
+    }
+    .thumbnail-list {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+    .main-display-box {
+        height: 350px;
+    }
+    .product-name {
+        font-size: 2.2rem;
+    }
+}
