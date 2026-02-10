@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Routes, Route } from "react-router-dom"; // ✅ NO BrowserRouter here
 import "./App.css";
 
@@ -25,7 +25,7 @@ function App() {
     localStorage.setItem("natureVibesCart", JSON.stringify(cartItems));
   }, [cartItems]);
 
-  const handleAddToCart = (product) => {
+  const handleAddToCart = useCallback((product) => {
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
@@ -37,9 +37,9 @@ function App() {
       }
       return [...prev, { ...product, quantity: 1 }];
     });
-  };
+  }, []);
 
-  const handleUpdateQty = (id, delta) => {
+  const handleUpdateQty = useCallback((id, delta) => {
     setCartItems((prev) =>
       prev
         .map((item) => {
@@ -51,64 +51,70 @@ function App() {
         })
         .filter(Boolean)
     );
-  };
+  }, []);
 
-  const handleRemove = (id) => {
+  const handleRemove = useCallback((id) => {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  }, []);
 
   const cartCount = cartItems.reduce(
     (acc, item) => acc + item.quantity,
     0
   );
-
   /* ---------------- Home Page Content ---------------- */
-  const HomeContent = () => (
-    <>
-      <Hero />
+  
+  // Extract HomeContent outside App's render to avoid remounting on every state change
+  // and wrap with React.memo so it only updates when `onAddToCart` changes.
+  const HomeContent = React.useMemo(() => {
+    const Component = ({ onAddToCart }) => (
+      <>
+        <Hero />
 
-      <section id="full-catalog">
-        <div className="section-header">
-          <h2>Full Plant Catalog</h2>
-          <p>Every variety we grow, curated for your home.</p>
-        </div>
+        <section id="full-catalog">
+          <div className="section-header">
+            <h2>Full Plant Catalog</h2>
+            <p>Every variety we grow, curated for your home.</p>
+          </div>
 
-        <ProductSection {...categories.indoor} onAddToCart={handleAddToCart} />
-        <ProductSection {...categories.foliage} onAddToCart={handleAddToCart} />
-        <ProductSection {...categories.outdoor} onAddToCart={handleAddToCart} />
-        <ProductSection {...categories.pots} onAddToCart={handleAddToCart} />
-      </section>
+          <ProductSection {...categories.indoor} onAddToCart={onAddToCart} />
+          <ProductSection {...categories.foliage} onAddToCart={onAddToCart} />
+          <ProductSection {...categories.outdoor} onAddToCart={onAddToCart} />
+          <ProductSection {...categories.pots} onAddToCart={onAddToCart} />
+        </section>
 
-      <section id="furniture" style={{ background: "#f4f8f4" }}>
-        <div className="section-header">
-          <h2>Premium Furniture</h2>
-          <p>Handcrafted Sheesham & Teak wood pieces.</p>
-        </div>
+        <section id="furniture" style={{ background: "#f4f8f4" }}>
+          <div className="section-header">
+            <h2>Premium Furniture</h2>
+            <p>Handcrafted Sheesham & Teak wood pieces.</p>
+          </div>
 
-        <ProductSection {...furniture} onAddToCart={handleAddToCart} />
-      </section>
+          <ProductSection {...furniture} onAddToCart={onAddToCart} />
+        </section>
 
-      <section className="about-section" id="about">
-        <div className="about-content">
-          <h2>About NatureVibes</h2>
-          <p>
-            NatureVibes blends modern furniture with living greenery to bring
-            harmony, calm, and freshness into your home.
-          </p>
-        </div>
-      </section>
-    </>
-  );
+        <section className="about-section" id="about">
+          <div className="about-content">
+            <h2>About NatureVibes</h2>
+            <p>
+              NatureVibes blends modern furniture with living greenery to bring
+              harmony, calm, and freshness into your home.
+            </p>
+          </div>
+        </section>
+      </>
+    );
+
+    return React.memo(Component);
+  }, []);
 
   return (
     <>
       <Navbar
-        onOpenLogin={() => setIsModalOpen(true)}
+        onOpenLogin={React.useCallback(() => setIsModalOpen(true), [])}
         cartCount={cartCount}
       />
 
       <Routes>
-        <Route path="/" element={<HomeContent />} />
+        <Route path="/" element={<HomeContent onAddToCart={handleAddToCart} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
 
@@ -117,12 +123,12 @@ function App() {
       {/* Global Overlays */}
       <StickyCartBar
         cartItems={cartItems}
-        onOpenCart={() => setIsCartOpen(true)}
+        onOpenCart={React.useCallback(() => setIsCartOpen(true), [])}
       />
 
       <CartSidebar
         isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
+        onClose={React.useCallback(() => setIsCartOpen(false), [])}
         cartItems={cartItems}
         onUpdateQty={handleUpdateQty}
         onRemove={handleRemove}
@@ -130,7 +136,7 @@ function App() {
 
       <LoginModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={React.useCallback(() => setIsModalOpen(false), [])}
       />
     </>
   );
