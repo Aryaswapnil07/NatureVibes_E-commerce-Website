@@ -1,0 +1,120 @@
+.related-section {
+    padding: 60px 5%;
+    background-color: #ffffff;
+    border-top: 1px solid #eeeeee;
+}
+
+.related-header {
+    margin-bottom: 30px;
+}
+
+.related-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1b1b1b;
+}
+
+.related-subtitle {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+/* Scroll Container */
+.related-scroll-container {
+    display: flex;
+    overflow-x: auto;
+    gap: 25px;
+    padding-bottom: 20px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none; /* Firefox */
+}
+
+.related-scroll-container::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+/* Card Styling */
+.related-card {
+    min-width: 240px;
+    max-width: 240px;
+    background: #f8fcf8;
+    border-radius: 18px;
+    overflow: hidden;
+    scroll-snap-align: start;
+    border: 1px solid #eeeeee;
+    transition: 0.3s ease;
+}
+
+.related-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+}
+
+.related-img-box {
+    height: 200px;
+    position: relative;
+    cursor: pointer;
+    background: #fff;
+}
+
+.related-img-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.related-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #2e7d32;
+    color: white;
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.related-info {
+    padding: 15px;
+}
+
+.related-item-name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.related-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.related-price {
+    font-weight: 700;
+    color: #1b5e20;
+}
+
+.related-add-btn {
+    background: #2e7d32;
+    color: white;
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.related-add-btn:hover {
+    background: #1b5e20;
+    transform: scale(1.1);
+}
