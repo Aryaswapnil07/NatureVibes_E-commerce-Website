@@ -16,4 +16,4 @@ const ProductSection = ({ title, id, products, onAddToCart }) => {
   );
 };
 
-export default ProductSection;
+export default React.memo(ProductSection);

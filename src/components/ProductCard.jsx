@@ -35,4 +35,4 @@ const ProductCard = ({ product, onAdd }) => {
   );
 };
 
-export default ProductCard;
+export default React.memo(ProductCard);
