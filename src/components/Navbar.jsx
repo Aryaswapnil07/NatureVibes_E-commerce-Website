@@ -27,12 +27,12 @@ const Navbar = ({ onOpenLogin }) => {
     return () => clearInterval(intervalId);
   }, []);
 
-  // ---------------- Mobile Menu Toggle ----------------
+  // ---------------- Navigation & Scroll Logic ----------------
+
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen((prev) => !prev);
   };
 
-  // ---------------- Submenu Toggle (Mobile Only) ----------------
   const toggleSubMenu = (e, menuName) => {
     if (window.innerWidth <= 992) {
       e.preventDefault();
@@ -40,10 +40,38 @@ const Navbar = ({ onOpenLogin }) => {
     }
   };
 
+  /**
+   * ✅ Logic: Closes menus and scrolls smoothly to the target section
+   */
+  const handleNavigation = (e, targetId) => {
+    // Check if it's an internal link
+    if (targetId.startsWith("#")) {
+      e.preventDefault();
+      
+      // Close all menus
+      setIsMobileMenuOpen(false);
+      setActiveSubMenu(null);
+
+      const element = document.querySelector(targetId);
+      if (element) {
+        const offset = 80; // Adjust this to match your navbar height
+        const bodyRect = document.body.getBoundingClientRect().top;
+        const elementRect = element.getBoundingClientRect().top;
+        const elementPosition = elementRect - bodyRect;
+        const offsetPosition = elementPosition - offset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth"
+        });
+      }
+    }
+  };
+
   return (
     <header className="header-main">
       {/* ---------------- Logo ---------------- */}
-      <a href="#home" className="brand-logo">
+      <a href="#home" className="brand-logo" onClick={(e) => handleNavigation(e, "#home")}>
         NatureVibes
       </a>
 
@@ -58,7 +86,6 @@ const Navbar = ({ onOpenLogin }) => {
           />
         </div>
 
-        {/* ✅ LOGIN BUTTON (FIXED) */}
         <button
           className="blinkit-login-btn"
           onClick={onOpenLogin}
@@ -81,7 +108,7 @@ const Navbar = ({ onOpenLogin }) => {
       <nav className={`navbar ${isMobileMenuOpen ? "active" : ""}`}>
         <ul className="nav-list">
           <li className="nav-item">
-            <a href="#home" className="nav-link">
+            <a href="#home" className="nav-link" onClick={(e) => handleNavigation(e, "#home")}>
               Home
             </a>
           </li>
@@ -113,14 +140,14 @@ const Navbar = ({ onOpenLogin }) => {
                   </div>
                   <ul className="mega-link-list">
                     <span className="sub-cat-label">Snake Plants</span>
-                    <li><a href="#cat-indoor">Laurentii</a></li>
-                    <li><a href="#cat-indoor">Moonshine</a></li>
-                    <li><a href="#cat-indoor">Cylindrica</a></li>
+                    <li><a href="#cat-indoor" onClick={(e) => handleNavigation(e, "#cat-indoor")}>Laurentii</a></li>
+                    <li><a href="#cat-indoor" onClick={(e) => handleNavigation(e, "#cat-indoor")}>Moonshine</a></li>
+                    <li><a href="#cat-indoor" onClick={(e) => handleNavigation(e, "#cat-indoor")}>Cylindrica</a></li>
 
                     <span className="sub-cat-label">Air Purifiers</span>
-                    <li><a href="#cat-indoor">Areca Palm</a></li>
-                    <li><a href="#cat-indoor">Rubber Plant</a></li>
-                    <li><a href="#cat-indoor">Spider Plant</a></li>
+                    <li><a href="#cat-indoor" onClick={(e) => handleNavigation(e, "#cat-indoor")}>Areca Palm</a></li>
+                    <li><a href="#cat-indoor" onClick={(e) => handleNavigation(e, "#cat-indoor")}>Rubber Plant</a></li>
+                    <li><a href="#cat-indoor" onClick={(e) => handleNavigation(e, "#cat-indoor")}>Spider Plant</a></li>
                   </ul>
                 </div>
 
@@ -135,17 +162,17 @@ const Navbar = ({ onOpenLogin }) => {
                   <ul className="mega-link-list">
                     <span className="sub-cat-label">Money Plants</span>
                     <li>
-                      <a href="#cat-foliage">
+                      <a href="#cat-foliage" onClick={(e) => handleNavigation(e, "#cat-foliage")}>
                         Golden Pothos <span className="menu-badge badge-hot">Hot</span>
                       </a>
                     </li>
-                    <li><a href="#cat-foliage">Marble Queen</a></li>
-                    <li><a href="#cat-foliage">Neon Pothos</a></li>
+                    <li><a href="#cat-foliage" onClick={(e) => handleNavigation(e, "#cat-foliage")}>Marble Queen</a></li>
+                    <li><a href="#cat-foliage" onClick={(e) => handleNavigation(e, "#cat-foliage")}>Neon Pothos</a></li>
 
                     <span className="sub-cat-label">Exotic</span>
-                    <li><a href="#cat-foliage">Monstera Deliciosa</a></li>
-                    <li><a href="#cat-foliage">Philodendron Birkin</a></li>
-                    <li><a href="#cat-foliage">Aglaonema Red</a></li>
+                    <li><a href="#cat-foliage" onClick={(e) => handleNavigation(e, "#cat-foliage")}>Monstera Deliciosa</a></li>
+                    <li><a href="#cat-foliage" onClick={(e) => handleNavigation(e, "#cat-foliage")}>Philodendron Birkin</a></li>
+                    <li><a href="#cat-foliage" onClick={(e) => handleNavigation(e, "#cat-foliage")}>Aglaonema Red</a></li>
                   </ul>
                 </div>
 
@@ -159,15 +186,15 @@ const Navbar = ({ onOpenLogin }) => {
                   </div>
                   <ul className="mega-link-list">
                     <span className="sub-cat-label">Flowering</span>
-                    <li><a href="#cat-outdoor">Desi Rose</a></li>
-                    <li><a href="#cat-outdoor">Hibiscus</a></li>
-                    <li><a href="#cat-outdoor">Bougainvillea</a></li>
-                    <li><a href="#cat-outdoor">Jasmine / Mogra</a></li>
+                    <li><a href="#cat-outdoor" onClick={(e) => handleNavigation(e, "#cat-outdoor")}>Desi Rose</a></li>
+                    <li><a href="#cat-outdoor" onClick={(e) => handleNavigation(e, "#cat-outdoor")}>Hibiscus</a></li>
+                    <li><a href="#cat-outdoor" onClick={(e) => handleNavigation(e, "#cat-outdoor")}>Bougainvillea</a></li>
+                    <li><a href="#cat-outdoor" onClick={(e) => handleNavigation(e, "#cat-outdoor")}>Jasmine / Mogra</a></li>
 
                     <span className="sub-cat-label">Edible Garden</span>
-                    <li><a href="#cat-outdoor">Mango Varieties</a></li>
+                    <li><a href="#cat-outdoor" onClick={(e) => handleNavigation(e, "#cat-outdoor")}>Mango Varieties</a></li>
                     <li>
-                      <a href="#cat-outdoor">
+                      <a href="#cat-outdoor" onClick={(e) => handleNavigation(e, "#cat-outdoor")}>
                         Organic Veg Seeds <span className="menu-badge badge-new">New</span>
                       </a>
                     </li>
@@ -184,14 +211,14 @@ const Navbar = ({ onOpenLogin }) => {
                   </div>
                   <ul className="mega-link-list">
                     <span className="sub-cat-label">Pots & Planters</span>
-                    <li><a href="#cat-pots">Ceramic Pots</a></li>
-                    <li><a href="#cat-pots">Terracotta</a></li>
-                    <li><a href="#cat-pots">Hanging Planters</a></li>
+                    <li><a href="#cat-pots" onClick={(e) => handleNavigation(e, "#cat-pots")}>Ceramic Pots</a></li>
+                    <li><a href="#cat-pots" onClick={(e) => handleNavigation(e, "#cat-pots")}>Terracotta</a></li>
+                    <li><a href="#cat-pots" onClick={(e) => handleNavigation(e, "#cat-pots")}>Hanging Planters</a></li>
 
                     <span className="sub-cat-label">Plant Care</span>
-                    <li><a href="#cat-pots">Potting Mix</a></li>
-                    <li><a href="#cat-pots">Vermicompost</a></li>
-                    <li><a href="#cat-pots">Gardening Tools</a></li>
+                    <li><a href="#cat-pots" onClick={(e) => handleNavigation(e, "#cat-pots")}>Potting Mix</a></li>
+                    <li><a href="#cat-pots" onClick={(e) => handleNavigation(e, "#cat-pots")}>Vermicompost</a></li>
+                    <li><a href="#cat-pots" onClick={(e) => handleNavigation(e, "#cat-pots")}>Gardening Tools</a></li>
                   </ul>
                 </div>
 
@@ -201,7 +228,7 @@ const Navbar = ({ onOpenLogin }) => {
                   <div className="visual-content">
                     <h3>New Arrivals</h3>
                     <p>Check out our rare Cactus collection dropping this week.</p>
-                    <a href="#cat-cacti" className="visual-btn">
+                    <a href="#cat-cacti" className="visual-btn" onClick={(e) => handleNavigation(e, "#cat-cacti")}>
                       Shop Now
                       <span className="material-icons" style={{ fontSize: "1rem" }}>
                         arrow_forward
@@ -236,8 +263,8 @@ const Navbar = ({ onOpenLogin }) => {
                     <h4>Living Room</h4>
                   </div>
                   <ul>
-                    <li><a href="#furniture">Sofa Sets</a></li>
-                    <li><a href="#furniture">Coffee Tables</a></li>
+                    <li><a href="#furniture" onClick={(e) => handleNavigation(e, "#furniture")}>Sofa Sets</a></li>
+                    <li><a href="#furniture" onClick={(e) => handleNavigation(e, "#furniture")}>Coffee Tables</a></li>
                   </ul>
                 </div>
 
@@ -247,8 +274,8 @@ const Navbar = ({ onOpenLogin }) => {
                     <h4>Bedroom</h4>
                   </div>
                   <ul>
-                    <li><a href="#furniture">King Beds</a></li>
-                    <li><a href="#furniture">Wardrobes</a></li>
+                    <li><a href="#furniture" onClick={(e) => handleNavigation(e, "#furniture")}>King Beds</a></li>
+                    <li><a href="#furniture" onClick={(e) => handleNavigation(e, "#furniture")}>Wardrobes</a></li>
                   </ul>
                 </div>
               </div>
@@ -256,7 +283,7 @@ const Navbar = ({ onOpenLogin }) => {
           </li>
 
           <li className="nav-item">
-            <a href="#about" className="nav-link">
+            <a href="#about" className="nav-link" onClick={(e) => handleNavigation(e, "#about")}>
               About
             </a>
           </li>
