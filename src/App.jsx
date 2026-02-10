@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Routes, Route } from "react-router-dom";
 import "./App.css";
 
+// Data
 import { categories, furniture } from "./data";
 
+// Components
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import ProductSection from "./components/ProductSection";
@@ -13,25 +15,38 @@ import CartSidebar from "./components/CartSidebar";
 import StickyCartBar from "./components/StickyCartBar";
 import NotFound from "./components/NotFound";
 import ProductInfoPage from "./components/ProductInfo";
-import CheckoutPage from "./components/CheckoutPage"; // ✅ Import Checkout component
+import CheckoutPage from "./components/CheckoutPage";
+import SuccessPage from "./components/SuccessPage"; 
 
 function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Initialize Cart from LocalStorage
   const [cartItems, setCartItems] = useState(() => {
     const saved = localStorage.getItem("natureVibesCart");
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Persist Cart to LocalStorage
   useEffect(() => {
     localStorage.setItem("natureVibesCart", JSON.stringify(cartItems));
   }, [cartItems]);
 
-  // ✅ Global Total Calculation for Checkout
+  // ✅ Global Total Calculation (Efficiently memoized)
   const totalAmount = useMemo(() => {
     return cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   }, [cartItems]);
 
+  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  // ✅ Clear Cart Function (Passed to Checkout -> Success)
+  const clearCart = useCallback(() => {
+    setCartItems([]);
+    localStorage.removeItem("natureVibesCart");
+  }, []);
+
+  // --- Cart Actions ---
   const handleAddToCart = useCallback((product) => {
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
@@ -64,9 +79,14 @@ function App() {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
-  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  // --- UI Handlers ---
+  const handleOpenLogin = useCallback(() => setIsModalOpen(true), []);
+  const handleOpenCart = useCallback(() => setIsCartOpen(true), []);
+  const handleCloseCart = useCallback(() => setIsCartOpen(false), []);
+  const handleCloseModal = useCallback(() => setIsModalOpen(false), []);
 
-  /* ---------------- Home Page Content Component ---------------- */
+  /* ---------------- Home Page Content ---------------- */
+  // Memoized to prevent unnecessary re-renders of the landing page
   const HomeContent = useMemo(() => {
     const Component = ({ onAddToCart }) => (
       <>
@@ -107,7 +127,7 @@ function App() {
   return (
     <>
       <Navbar
-        onOpenLogin={useCallback(() => setIsModalOpen(true), [])}
+        onOpenLogin={handleOpenLogin}
         cartCount={cartCount}
       />
 
@@ -119,33 +139,44 @@ function App() {
           element={<ProductInfoPage onAddToCart={handleAddToCart} />} 
         />
 
-        {/* ✅ NEW: Checkout Route handles Address & Razorpay */}
         <Route 
           path="/checkout" 
-          element={<CheckoutPage cartItems={cartItems} totalAmount={totalAmount} />} 
+          element={
+            <CheckoutPage 
+              cartItems={cartItems} 
+              totalAmount={totalAmount} 
+              clearCart={clearCart} 
+            />
+          } 
         />
+
+        <Route path="/success" element={<SuccessPage />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
 
       <Footer />
 
+      {/* ✅ Passed totalAmount to StickyCartBar */}
       <StickyCartBar
         cartItems={cartItems}
-        onOpenCart={useCallback(() => setIsCartOpen(true), [])}
+        totalAmount={totalAmount}
+        onOpenCart={handleOpenCart}
       />
 
+      {/* ✅ Passed totalAmount to CartSidebar */}
       <CartSidebar
         isOpen={isCartOpen}
-        onClose={useCallback(() => setIsCartOpen(false), [])}
+        onClose={handleCloseCart}
         cartItems={cartItems}
+        totalAmount={totalAmount}
         onUpdateQty={handleUpdateQty}
         onRemove={handleRemove}
       />
 
       <LoginModal
         isOpen={isModalOpen}
-        onClose={useCallback(() => setIsModalOpen(false), [])}
+        onClose={handleCloseModal}
       />
     </>
   );

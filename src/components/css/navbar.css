@@ -45,7 +45,7 @@
   white-space: nowrap;
 }
 
-/* Search Box Styles */
+/* --- Search & Auth Wrapper --- */
 .blinkit-wrapper {
   display: flex;
   align-items: center;
@@ -53,36 +53,10 @@
   margin: 0 20px;
   gap: 15px;
   max-width: 900px;
+  position: relative; /* Context for SearchBar absolute positioning if needed */
 }
 
-.blinkit-search-box {
-  display: flex;
-  align-items: center;
-  background: #f8f8f8;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 8px 12px;
-  flex-grow: 1;
-  height: 45px;
-  transition: 0.2s;
-}
-
-.blinkit-search-box:focus-within {
-  background: white;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
-  border-color: #ccc;
-}
-
-.blinkit-input {
-  border: none;
-  background: transparent;
-  outline: none;
-  width: 100%;
-  font-family: 'Poppins', sans-serif;
-  font-size: 0.9rem;
-  color: #333;
-}
-
+/* Header Login Button (Desktop) */
 .blinkit-login-btn {
   background: none;
   border: none;
@@ -91,13 +65,15 @@
   cursor: pointer;
   transition: color 0.2s;
   white-space: nowrap;
+  color: var(--dark);
+  padding: 8px 15px;
 }
 
 .blinkit-login-btn:hover {
   color: var(--green);
 }
 
-/* Navigation List */
+/* --- Navigation List --- */
 .navbar {
   display: flex;
   align-items: center;
@@ -131,12 +107,17 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .nav-link:hover {
   color: var(--green);
 }
 
+/* Underline Animation */
 .nav-link::after {
   content: "";
   position: absolute;
@@ -152,7 +133,7 @@
   width: 100%;
 }
 
-/* MEGA MENU STYLES */
+/* --- MEGA MENU STYLES --- */
 .mega-menu-container {
   position: fixed;
   top: 80px;
@@ -160,7 +141,7 @@
   transform: translateX(-50%) translateY(20px);
   width: 95%;
   max-width: 1400px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.02);
@@ -246,7 +227,6 @@
 .mega-link-list li a:hover {
   color: var(--green);
   transform: translateX(5px);
-  text-shadow: 0 0 1px rgba(46, 125, 50, 0.3);
 }
 
 /* Badges */
@@ -334,7 +314,7 @@
   color: var(--green);
 }
 
-/* MOBILE MENU & RESPONSIVE STYLES */
+/* --- MOBILE MENU & RESPONSIVE STYLES --- */
 .hamburger {
   display: none;
   cursor: pointer;
@@ -348,6 +328,15 @@
   margin: 5px auto;
   background-color: var(--dark);
   transition: all 0.3s;
+}
+
+/* ✅ NEW: Visibility Utilities for Login Button */
+.mobile-only {
+  display: none; /* Hidden by default */
+}
+
+.desktop-only {
+  display: block; /* Visible by default */
 }
 
 @media (max-width: 992px) {
@@ -382,11 +371,12 @@
   .blinkit-wrapper {
     order: 3;
     width: 100%;
-    margin: 5px 0 0 0;
+    margin: 5px 0 10px 0;
   }
 
-  .blinkit-login-btn {
-    display: none;
+  /* ✅ Hide Desktop Login Button on Mobile */
+  .desktop-only {
+    display: none !important;
   }
 
   /* Mobile Navbar Slide-in */
@@ -403,6 +393,7 @@
     transition: 0.4s;
     overflow-y: auto;
     z-index: 999;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
   }
 
   .navbar.active {
@@ -419,17 +410,29 @@
     width: 100%;
     display: block;
     padding: 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #f0f0f0;
   }
 
   .nav-link {
     padding: 20px 30px;
     width: 100%;
     justify-content: space-between;
+    font-size: 1rem;
   }
 
   .nav-link::after {
     display: none;
+  }
+
+  /* ✅ Show Mobile Login Button */
+  .mobile-only {
+    display: block !important;
+  }
+
+  .mobile-auth-btn {
+    text-align: left;
+    color: var(--dark-green);
+    font-weight: 600;
   }
 
   /* Mobile Mega Menu Resets */
@@ -444,7 +447,7 @@
   }
 
   .mega-links-section {
-    padding: 15px;
+    padding: 15px 30px;
     border: none;
   }
 
@@ -468,7 +471,7 @@
   /* When JS toggles this class */
   .mega-menu-container.mobile-open {
     height: auto;
-    padding: 20px;
+    padding: 10px 0;
     border-top: 1px solid #eee;
   }
 }
