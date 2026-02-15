@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-
+const connectDB = require("./config/db.js")   // IMPORTING DB.JS
 
 const app = express()
 
@@ -10,7 +10,13 @@ app.use(cors());
 
 dotenv.config();
 
-const PORT = 9000 ; 
+//  CONNECTNG TO MONGODB DATABASE 
+
+// CALLING CONNECTDB() FUNCTION 
+
+connectDB()
+
+const PORT = process.env.PORT || 3000 ; 
 
 app.get("/", (req , res) => {
     res.send("Welcome to NatureVibes API ! ")
