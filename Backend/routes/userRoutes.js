@@ -1,71 +1,136 @@
 const express = require("express");
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
-
-
+const bcrypt = require("bcryptjs");
+const {protect} = require("../middleware/authMiddleware")
 const router = express.Router();
 
-// @route POST /api/users/register
-// @desc Register a new user 
-// @access Public
-
-router.post("/register" , async (req , res) => {
-    const{name , email , password  } = req.body;
-
-    try {
-        //  REGISTRATION LOGIC
-      let user = await User.findOne({email }); // for checking uniqueness
-
-      if (user) return res.status(400).json({message : "User already exists"});
-      user = new User({name, email , password});
-      await user.save();
-
-
-    //  CREATE JWT PayLoad
-        const payload = {user : {id : user._id, role : user.role}};
-
-     // Sign and return the token  along with user data    
-     jwt.sign(payload , process.env.JWT_SECRET , {expiresIn : "40h"}, (err , token) => {
-        if(err) throw err;
-
-        // send the user and token in response 
-        res.status(201).json({
-            user: {
-                _id : user._id,
-                name : user.name,
-                email : user.email,
-                role : user.role,
-            },
-            token,
-        });
-        
-     });
-
-
-    } catch (error) {
-        console.error("Not valid Inputs ")
-        res.status(500).send("Server Error")
-    }
-}) 
-
-
-//  @route POST /API/USERS/LOGIN
-// @desc Authenticate user 
-// @acceess PUBLIC 
-
-router.post("/login" , async(req , res) => {
-    const {email , password} = req.body;
+/*
+========================================
+REGISTER ROUTE
+========================================
+*/
+router.post("/register", async (req, res) => {
+    const { name, email, password } = req.body;
 
     try {
-        //  FINDING USER BY EMAIL 
+        // Check if user already exists
         let user = await User.findOne({ email });
 
-        if(!user) return res.status(400).json({message : "Invalid Credentials"});
-        const isMatch = await user.res.status(400)
-        
-    } catch (error) {
-        console.log(error)
-    }
-})
+        if (user) {
+            return res.status(400).json({ message: "User already exists" });
+        }
 
-module.exports = router ;
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Create new user
+        user = new User({
+            name,
+            email,
+            password: hashedPassword,
+        });
+
+        await user.save();
+
+        // Create JWT payload
+        const payload = {
+            user: {
+                id: user._id,
+                role: user.role,
+            },
+        };
+
+        // Sign token
+        jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: "40h" },
+            (err, token) => {
+                if (err) throw err;
+
+                res.status(201).json({
+                    user: {
+                        _id: user._id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                    },
+                    token,
+                });
+            }
+        );
+
+    } catch (error) {
+        console.error("REGISTER ERROR:", error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
+/*
+========================================
+LOGIN ROUTE
+========================================
+*/
+router.post("/login", async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        // Find user
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(400).json({ message: "Invalid Credentials" });
+        }
+
+        // Compare password
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid Credentials" });
+        }
+
+        // Create JWT payload
+        const payload = {
+            user: {
+                id: user._id,
+                role: user.role,
+            },
+        };
+
+        // Sign token
+        jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: "40h" },
+            (err, token) => {
+                if (err) throw err;
+
+                res.json({
+                    user: {
+                        _id: user._id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                    },
+                    token,
+                });
+            }
+        );
+
+    } catch (error) {
+        console.error("LOGIN ERROR:", error);
+        res.status(500).json({ message: error.message });
+    }
+});
+//  @route GET /Api/users/profile 
+//  @desc Get logged in-user Profile 
+// @acess Private 
+
+router.get("/profile" ,  protect , async (req ,res ) => {
+    res.json("req.user");
+} )
+
+module.exports = router;
