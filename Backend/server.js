@@ -1,33 +1,33 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const connectDB = require("./config/db.js")   // IMPORTING DB.JS
-const userRoutes = require("./routes/userRoutes.js") // importing userRoutes.js 
+const connectDB = require("./config/db.js");
 
-const app = express()
-
-app.use(express.json());
-app.use(cors());
+const userRoutes = require("./routes/userRoutes.js");
+const productRoutes = require("./routes/productRoutes.js");
 
 dotenv.config();
 
-//  CONNECTNG TO MONGODB DATABASE 
+const app = express();
 
-// CALLING CONNECTDB() FUNCTION 
+// Middleware
+app.use(express.json());
+app.use(cors());
 
-connectDB()
+// Connect DB
+connectDB();
 
-const PORT = process.env.PORT || 3000 ; 
+const PORT = process.env.PORT || 3000;
 
-app.get("/", (req , res) => {
-    res.send("Welcome to NatureVibes API ! ")
+// Test route
+app.get("/", (req, res) => {
+  res.send("Welcome to NatureVibes API!");
 });
 
-//  API ROUTES IS HERE 
+// API Routes
+app.use("/api/users", userRoutes);
+app.use("/api/products", productRoutes);   // ✅ FIXED
 
-app.use("/api/users", userRoutes) ;
-
-
-app.listen(PORT ,() => {
-    console.log(`Server is listening on https://localhost:${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Server is listening on http://localhost:${PORT}`);
 });
