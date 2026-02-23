@@ -1,36 +1,30 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/user");
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import jwt from "jsonwebtoken"
+import { User } from "../models/user.model.js";
 
-//  MIDDLEWARES TO protect routes
-
-const protect = async (req, res, next) => {
-  let token;
-
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
+export const verifyJWT = asyncHandler(async(req, _, next) => {
     try {
-      token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      req.user = await User.findById(decoded.user.id).select("-password");
-      next();
+        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
+        
+        // console.log(token);
+        if (!token) {
+            throw new ApiError(401, "Unauthorized request")
+        }
+    
+        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+    
+        const user = await User.findById(decodedToken?._id).select("-password -refreshToken")
+    
+        if (!user) {
+            
+            throw new ApiError(401, "Invalid Access Token")
+        }
+    
+        req.user = user;
+        next()
     } catch (error) {
-      console.error("Token verification failed", error);
-      res.status(401).json({ message: "Not authorized , token failed" });
+        throw new ApiError(401, error?.message || "Invalid access token")
     }
-  } else {
-    res.status(401).json({ message: "Not authorized , no token Provided " });
-  }
-};
-// Middle Ware to check if the user is an admin 
-const admin = (req , res , next ) => {
-  if(req.user && req.user.role == "admin"){
-    next();
-  }else{
-    res.status(403).json({message : "not authorized as an admin "});
-
-  }
-};
-module.exports = { protect , admin  };
+    
+})
