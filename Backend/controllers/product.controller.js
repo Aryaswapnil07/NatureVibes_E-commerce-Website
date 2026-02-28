@@ -3,6 +3,8 @@ import slugify from "slugify";
 import fs from "fs";
 import { cloudinary } from "../config/cloudinary.js";
 
+const imageFields = ["image1", "image2", "image3", "image4"];
+
 // Helper: Parse JSON safely (for form-data)
 const parseJSON = (data) => {
   if (!data) return undefined;
@@ -11,6 +13,68 @@ const parseJSON = (data) => {
   } catch {
     return data;
   }
+};
+
+const parseNumber = (value, fallback = 0) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const parseBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    if (value.toLowerCase() === "true") return true;
+    if (value.toLowerCase() === "false") return false;
+  }
+  return fallback;
+};
+
+const uploadProductImages = async (files, altText) => {
+  const uploadedImages = [];
+
+  if (!files) return uploadedImages;
+
+  for (const field of imageFields) {
+    if (!files[field]) continue;
+
+    const filePath = files[field][0]?.path;
+    if (!filePath) continue;
+
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder: "products",
+    });
+
+    uploadedImages.push({
+      url: result.secure_url,
+      alt: altText,
+      isPrimary: uploadedImages.length === 0,
+    });
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+
+  return uploadedImages;
+};
+
+const getUniqueSlug = async (name, customSlug, existingProductId = null) => {
+  let finalSlug = customSlug || slugify(name, { lower: true, strict: true });
+  if (!finalSlug) return "";
+
+  const slugQuery = { slug: finalSlug };
+  if (existingProductId) {
+    slugQuery._id = { $ne: existingProductId };
+  }
+
+  const existingSlug = await Product.findOne(slugQuery);
+  if (existingSlug) {
+    finalSlug = `${finalSlug}-${Date.now()}`;
+  }
+
+  return finalSlug;
 };
 
 // ==============================
@@ -53,19 +117,26 @@ const addProduct = async (req, res) => {
     // ======================
     // VALIDATION
     // ======================
-    if (!name || !description || !price || !productType || !user) {
+    if (!name || !description || !price || !productType) {
       return res.status(400).json({
         success: false,
-        message: "Required fields missing (name, description, price, productType, user)",
+        message: "Required fields missing (name, description, price, productType)",
       });
     }
 
     // Convert numbers
-    price = Number(price);
-    discountedPrice = Number(discountedPrice) || 0;
-    costPrice = Number(costPrice) || 0;
-    taxPercent = Number(taxPercent) || 0;
-    stock = Number(stock) || 0;
+    price = parseNumber(price, 0);
+    discountedPrice = parseNumber(discountedPrice, 0);
+    costPrice = parseNumber(costPrice, 0);
+    taxPercent = parseNumber(taxPercent, 0);
+    stock = parseNumber(stock, 0);
+
+    if (Number.isNaN(price) || price <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Price must be a valid number greater than 0",
+      });
+    }
 
     // Parse JSON fields (important for Postman form-data)
     plantDetails = parseJSON(plantDetails);
@@ -76,48 +147,17 @@ const addProduct = async (req, res) => {
     // ======================
     // IMAGE UPLOAD → CLOUDINARY
     // ======================
-    let images = [];
-
-    if (req.files) {
-      const imageFields = ["image1", "image2", "image3", "image4"];
-
-      for (let field of imageFields) {
-        if (req.files[field]) {
-          const filePath = req.files[field][0].path;
-
-          const result = await cloudinary.uploader.upload(filePath, {
-            folder: "products",
-          });
-
-          console.log("Uploaded:", result.secure_url);
-
-          images.push({
-            url: result.secure_url,
-            alt: name,
-            isPrimary: images.length === 0,
-          });
-
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        }
-      }
-    }
+    const images = await uploadProductImages(req.files, name);
 
     // ======================
     // SLUG
     // ======================
-    let finalSlug = slug || slugify(name, { lower: true, strict: true });
-
-    const existingSlug = await Product.findOne({ slug: finalSlug });
-    if (existingSlug) {
-      finalSlug = `${finalSlug}-${Date.now()}`;
-    }
+    const finalSlug = await getUniqueSlug(name, slug);
 
     // ======================
     // CREATE PRODUCT
     // ======================
-    const product = new Product({
+    const productPayload = {
       name,
       slug: finalSlug,
       sku,
@@ -138,15 +178,20 @@ const addProduct = async (req, res) => {
       plantDetails,
       careGuide,
       shipping,
-      isFeatured: isFeatured === "true",
-      isBestSeller: isBestSeller === "true",
-      isNewArrival: isNewArrival === "true",
-      isTrending: isTrending === "true",
+      isFeatured: parseBoolean(isFeatured, false),
+      isBestSeller: parseBoolean(isBestSeller, false),
+      isNewArrival: parseBoolean(isNewArrival, false),
+      isTrending: parseBoolean(isTrending, false),
       seo,
-      isPublished: isPublished === "true",
-      publishedAt: isPublished === "true" ? new Date() : null,
-      user,
-    });
+      isPublished: parseBoolean(isPublished, false),
+      publishedAt: parseBoolean(isPublished, false) ? new Date() : null,
+    };
+
+    if (user) {
+      productPayload.user = user;
+    }
+
+    const product = new Product(productPayload);
 
     const savedProduct = await product.save();
 
@@ -167,11 +212,131 @@ const addProduct = async (req, res) => {
 };
 
 // ==============================
+// UPDATE PRODUCT
+// PATCH /api/products/update
+// ==============================
+const updateProduct = async (req, res) => {
+  try {
+    const { productId } = req.body;
+
+    if (!productId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "productId is required" });
+    }
+
+    const existingProduct = await Product.findById(productId);
+    if (!existingProduct || existingProduct.isDeleted) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+
+    const nextName = req.body.name?.trim() || existingProduct.name;
+    const nextDescription = req.body.description || existingProduct.description;
+    const nextProductType = req.body.productType || existingProduct.productType;
+
+    if (!nextName || !nextDescription || !nextProductType) {
+      return res.status(400).json({
+        success: false,
+        message: "Required fields missing (name, description, productType)",
+      });
+    }
+
+    const uploadedImages = await uploadProductImages(req.files, nextName);
+    const images = uploadedImages.length > 0 ? uploadedImages : existingProduct.images;
+
+    const nextPrice = parseNumber(req.body.price, existingProduct.price);
+    if (Number.isNaN(nextPrice) || nextPrice <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Price must be a valid number greater than 0",
+      });
+    }
+
+    const nextStock = parseNumber(req.body.stock, existingProduct.stock);
+    const nextIsPublished = parseBoolean(req.body.isPublished, existingProduct.isPublished);
+
+    const finalSlug = await getUniqueSlug(
+      nextName,
+      req.body.slug || existingProduct.slug,
+      existingProduct._id
+    );
+
+    const updatedPayload = {
+      name: nextName,
+      slug: finalSlug,
+      sku: req.body.sku ?? existingProduct.sku,
+      brand: req.body.brand ?? existingProduct.brand,
+      description: nextDescription,
+      shortDescription: req.body.shortDescription ?? existingProduct.shortDescription,
+      productType: nextProductType,
+      category: req.body.category ?? existingProduct.category,
+      subCategory: req.body.subCategory ?? existingProduct.subCategory,
+      tags:
+        req.body.tags !== undefined
+          ? String(req.body.tags)
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          : existingProduct.tags,
+      price: nextPrice,
+      discountedPrice: parseNumber(
+        req.body.discountedPrice,
+        existingProduct.discountedPrice || 0
+      ),
+      costPrice: parseNumber(req.body.costPrice, existingProduct.costPrice || 0),
+      taxPercent: parseNumber(req.body.taxPercent, existingProduct.taxPercent || 0),
+      stock: nextStock,
+      isInStock: nextStock > 0,
+      images,
+      plantDetails: parseJSON(req.body.plantDetails) ?? existingProduct.plantDetails,
+      careGuide: parseJSON(req.body.careGuide) ?? existingProduct.careGuide,
+      shipping: parseJSON(req.body.shipping) ?? existingProduct.shipping,
+      isFeatured: parseBoolean(req.body.isFeatured, existingProduct.isFeatured),
+      isBestSeller: parseBoolean(req.body.isBestSeller, existingProduct.isBestSeller),
+      isNewArrival: parseBoolean(req.body.isNewArrival, existingProduct.isNewArrival),
+      isTrending: parseBoolean(req.body.isTrending, existingProduct.isTrending),
+      seo: parseJSON(req.body.seo) ?? existingProduct.seo,
+      isPublished: nextIsPublished,
+      publishedAt: nextIsPublished
+        ? existingProduct.publishedAt || new Date()
+        : null,
+    };
+
+    if (req.body.user) {
+      updatedPayload.user = req.body.user;
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(productId, updatedPayload, {
+      new: true,
+    });
+
+    return res.json({
+      success: true,
+      message: "Product updated successfully",
+      product: updatedProduct,
+    });
+  } catch (error) {
+    console.error("Update Product Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to update product",
+    });
+  }
+};
+
+// ==============================
 // LIST PRODUCTS
 // ==============================
 const listProduct = async (req, res) => {
   try {
-    const products = await Product.find({ isDeleted: false }).sort({ createdAt: -1 });
+    const query = { isDeleted: false };
+    if (req.query.publishedOnly === "true") {
+      query.isPublished = true;
+    }
+
+    const products = await Product.find(query).sort({ createdAt: -1 });
 
     console.log("Total Products:", products.length);
 
@@ -229,4 +394,5 @@ export {
   listProduct,
   singleProduct,
   removeProduct,
+  updateProduct,
 };
