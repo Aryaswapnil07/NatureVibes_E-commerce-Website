@@ -1,146 +1,278 @@
-# 🌿 NatureVibes  
-### A Premium Plant E-Commerce Platform
+# 🌿 NatureVibes
 
-![React](https://img.shields.io/badge/React-18-blue)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.x-38bdf8)
-![Firebase](https://img.shields.io/badge/Firebase-Auth-orange)
-![Status](https://img.shields.io/badge/Status-In%20Development-green)
-![License](https://img.shields.io/badge/License-MIT-brightgreen)
+<p align="center">
+  <strong>Full-Stack Plant E-Commerce Platform</strong><br/>
+  Customer Storefront + Admin Panel + REST API
+</p>
 
----
-
-## 🌱 Overview
-
-**NatureVibes** is a modern, high-performance e-commerce platform designed for plant enthusiasts.  
-It combines a lush, nature-inspired UI with seamless shopping functionality, delivering an elegant experience from product discovery to checkout.
-
-Built using **React.js** and **Tailwind CSS**, NatureVibes emphasizes:
-- Clean architecture  
-- Scalable component design  
-- Smooth, immersive user interactions  
-
-This project demonstrates production-ready frontend engineering with a strong focus on UI/UX.
+<p align="center">
+  <img src="https://img.shields.io/badge/Frontend-React%2019-61DAFB?style=for-the-badge&logo=react" alt="React badge" />
+  <img src="https://img.shields.io/badge/Backend-Node%20%2B%20Express-339933?style=for-the-badge&logo=node.js" alt="Node badge" />
+  <img src="https://img.shields.io/badge/Database-MongoDB-47A248?style=for-the-badge&logo=mongodb" alt="MongoDB badge" />
+  <img src="https://img.shields.io/badge/Admin-Dashboard-1F2937?style=for-the-badge" alt="Admin badge" />
+</p>
 
 ---
 
-## 🚀 Features
+## ✨ Overview
 
-### 🛒 Advanced Shopping Cart System
-- **Sticky Cart Bar**  
-  Persistent access to cart items across the application.
-- **Dynamic Slide-Out Cart Sidebar**  
-  Category-based organization for clear item visibility.
-- **Persistent Cart State**  
-  Cart data stored in **Local Storage** to survive page reloads.
-- **Real-Time Quantity Management**  
-  Instant add, remove, and update actions with smooth transitions.
+NatureVibes is a production-style ecommerce project focused on plants and gardening products.  
+It includes:
+
+- 🛍️ A user-facing storefront (`/`)
+- 🧑‍💼 A dedicated admin panel (`/dashboard`)
+- ⚙️ A backend API for auth, products, users, addresses, and orders
+- ☁️ Cloudinary image upload support with multi-image product forms
 
 ---
 
-### 🧭 Premium Navigation (Top 1% Mega Menu)
-- **Asymmetrical Layout**  
-  A distinctive, non-traditional navigation design.
-- **Visual Category Sidebar**  
-  Intuitive browsing across plant collections.
-- **Smooth Scroll Navigation**  
-  Seamless jumps to catalog sections without disruptive page reloads.
+## 🧩 Monorepo Structure
+
+```text
+NatureVibes/
+├── src/                  # Customer frontend (React + Vite)
+├── Backend/              # API server (Express + MongoDB)
+└── admin pannel/         # Admin frontend (React + Vite)
+```
 
 ---
 
-### 🎨 Immersive UI / UX
-- **Scroll-Triggered Animations**  
-  Product cards fade and slide in as users scroll.
-- **Nature-Inspired Design System**  
-  Custom green palette and organic typography.
-- **Google Authentication**  
-  Secure login via Google using Firebase Authentication.
+## 🚀 Core Features
+
+### 👤 User Side
+
+- JWT login and registration
+- Product catalog fetched from backend
+- Search experience in navbar
+- Cart + checkout flow
+- Profile section with:
+  - Profile details
+  - Current orders
+  - Order history
+  - Address book management
+
+### 🧑‍💻 Admin Side
+
+- Admin authentication
+- Dashboard summary (orders, revenue, users, products)
+- Product listing and soft delete
+- Add new plant/product
+- Edit existing product
+- Upload up to 4 product images (`image1` to `image4`)
+- Order list and status updates
+
+### 🔧 Backend API
+
+- User auth and profile APIs
+- Address CRUD APIs
+- Product CRUD APIs
+- Order placement and tracking APIs
+- Admin reporting endpoints
 
 ---
 
-### 🛠️ Admin & Management Features
-- **Product Management Interface**  
-  Admin-only forms to add and manage plants with detailed care data:
-  - Sunlight requirements  
-  - Watering frequency  
-  - Soil type preferences  
+## 🛠️ Tech Stack
+
+- **Frontend (User):** React 19, React Router, Vite, CSS, Tailwind plugin
+- **Frontend (Admin):** React 19, React Router, Vite
+- **Backend:** Node.js, Express 5, MongoDB, Mongoose
+- **Auth:** JWT + bcryptjs
+- **Media:** Multer + Cloudinary
 
 ---
 
-## 🧰 Tech Stack
+## ⚙️ Local Setup
 
-| Layer | Technology |
-|------|-----------|
-| Frontend | React.js |
-| Styling | Tailwind CSS |
-| State Management | React Hooks (`useState`, `useEffect`) |
-| Authentication | Firebase (Google Auth) |
-| Icons | Lucide React, React Icons |
+### 1. Clone
+
+```bash
+git clone <your-repo-url>
+cd NatureVibes
+```
+
+### 2. Install Dependencies
+
+```bash
+# Storefront frontend
+npm install
+
+# Backend
+cd Backend
+npm install
+cd ..
+
+# Admin panel
+cd "admin pannel"
+npm install
+cd ..
+```
+
+### 3. Configure Environment Variables
+
+Create `Backend/.env`:
+
+```env
+PORT=9000
+MONGODB_URI=mongodb://127.0.0.1:27017
+JWT_SECRET=your_jwt_secret
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your_admin_password
+```
+
+> ℹ️ `MONGODB_URI` should be the base connection string (the backend app appends `/NatureVibes` internally).
+
+Create `/.env` (storefront):
+
+```env
+VITE_API_BASE_URL=http://localhost:9000
+```
+
+Create `/admin pannel/.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:9000
+```
+
+> ✅ Important: backend code uses `ADMIN_EMAIL` and `ADMIN_PASSWORD` for admin login.
+
+### 4. Run the Apps
+
+Use 3 terminals:
+
+```bash
+# Terminal 1: Backend
+cd Backend
+npm run server
+```
+
+```bash
+# Terminal 2: Storefront frontend
+npm run dev
+```
+
+```bash
+# Terminal 3: Admin frontend
+cd "admin pannel"
+npm run dev
+```
+
+Default dev URLs:
+
+- Storefront: `http://localhost:5173`
+- Admin Panel: `http://localhost:5174`
+- Backend API: `http://localhost:9000` (or your configured `PORT`)
 
 ---
 
-## 📁 Project Structure
+## 🧭 Main Routes
 
-naturevibes/
-├── src/
-│ ├── components/ # Reusable UI components (Navbar, Cart, ProductCard)
-│ ├── context/ # Cart & Auth state management
-│ ├── assets/ # Nature-themed images and icons
-│ ├── data/ # Plant catalog and metadata
-├── public/
-└── tailwind.config.js # Custom green-themed Tailwind configuration
+### Storefront
 
+- `/`
+- `/product/:productId`
+- `/checkout`
+- `/account/profile`
+- `/account/orders/current`
+- `/account/orders/history`
+- `/account/addresses`
 
----
+### Admin
 
-## 🔮 Roadmap
-
-Planned enhancements to scale NatureVibes into a full-featured marketplace:
-
-- 🤖 **AI Plant Care Assistant**  
-  Personalized gardening tips based on owned plants.
-- 💚 **Wishlist System**  
-  Save and track favorite or rare plants.
-- 💳 **Payment Gateway Integration**  
-  Secure checkout using Stripe or Razorpay.
-- 🌿 **Interactive 3D Plant Catalog**  
-  3D previews using Three.js.
-- 📦 **Order Tracking Dashboard**  
-  Real-time delivery status and order history.
+- `/login`
+- `/dashboard`
+- `/orders`
+- `/list`
+- `/add-plant`
+- `/edit-plant/:productId`
 
 ---
 
-## ⚙️ Getting Started
+## 🔌 API Reference (Current)
 
-### 1️⃣ Clone the Repository
+### Users
 
-https://github.com/Aryaswapnil07/NatureVibes_E-commerce-Website.git
+- `POST /api/users/register`
+- `POST /api/users/login`
+- `POST /api/users/admin`
+- `GET /api/users/profile` (auth)
+- `PATCH /api/users/profile` (auth)
+- `GET /api/users/addresses` (auth)
+- `POST /api/users/address` (auth)
+- `DELETE /api/users/address/:addressId` (auth)
+
+### Products
+
+- `POST /api/products/add` (admin, multipart form-data)
+- `GET /api/products/list`
+- `POST /api/products/single`
+- `PATCH /api/products/update` (admin, multipart form-data)
+- `POST /api/products/remove` (admin)
+
+### Orders
+
+- `POST /api/orders/place` (optional auth)
+- `GET /api/orders/my` (auth)
+- `GET /api/orders/list` (admin)
+- `GET /api/orders/summary` (admin)
+- `PATCH /api/orders/status` (admin)
+
+Auth headers supported by middleware:
+
+- `Authorization: Bearer <token>`
+- `token: <token>`
 
 ---
 
-### 2️⃣ Install Dependencies
-    npm install react react-dom
-    react-router-dom
-    tailwindcss @tailwindcss/vite 
-    lucide-react 
-    react-icons
-    
+## 📦 Scripts
 
-  
-### 3️⃣ Start the Development Server
+### Storefront (`/`)
 
+- `npm run dev`
+- `npm run build`
+- `npm run preview`
+- `npm run lint`
 
-     npm run dev
+### Backend (`/Backend`)
 
+- `npm run server` (nodemon)
+- `npm start`
 
-## 🌟 Vision
+### Admin (`/admin pannel`)
 
-NatureVibes is more than an e-commerce application—it’s a showcase of how thoughtful design, modern frontend technologies, and clean UX principles can create delightful digital experiences.
-
----
-
-## 📜 License
-This project is licensed under the **MIT License**.
+- `npm run dev`
+- `npm run build`
+- `npm run preview`
+- `npm run lint`
 
 ---
 
-### 💚 Built with passion for plants & clean code
+## 🧪 Notes
+
+- Product images are uploaded as `image1`, `image2`, `image3`, `image4`.
+- Deleted products are soft deleted (`isDeleted: true`).
+- Frontend and admin both use `VITE_API_BASE_URL` for backend connectivity.
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit changes
+4. Open a pull request
+
+---
+
+## 📄 License
+
+License is currently not declared in this repository.  
+Add a `LICENSE` file if you plan to publish it publicly.
+
+---
+
+<p align="center">
+  Built with 🌱, React, and clean backend architecture.
+</p>
