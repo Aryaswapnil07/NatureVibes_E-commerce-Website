@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import userModel from "../models/User.model.js";
 
+const getEnvValue = (value) => (value || "").replace(/"/g, "").trim();
+
 // CREATING TOKEN
 
 const createToken = (id) => {
@@ -113,19 +115,255 @@ const registerUser = async (req, res) => {
 const adminLogin = async (req , res) => {
   try {
     const {email , password } = req.body;
+    const adminEmail = getEnvValue(process.env.ADMIN_EMAIL);
+    const adminPassword = getEnvValue(process.env.ADMIN_PASSWORD);
 
-    if(email == process.env.ADMIN_EMAIL && password == process.env.ADMIN_PASSWORD) {
-      const token = jwt.sign(email+password,process.env.JWT_SECRET);
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    if(email === adminEmail && password === adminPassword) {
+      const token = jwt.sign(
+        { email, isAdmin: true },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
       res.json({
         success:true , token
       })
     } else{
-      res.json({success:false , message:"Invalid Admin Credentials"})
+      res.status(401).json({success:false , message:"Invalid Admin Credentials"})
 
     }
   } catch(error){
     console.error("Admin Login Issue ", error);
-    res.json({success:false , message:error.message})
+    res.status(500).json({success:false , message:error.message})
   }
 };
-export { loginUser, registerUser, adminLogin };
+
+const getUserProfile = async (req, res) => {
+  try {
+    const user = await userModel
+      .findById(req.userId)
+      .select("_id name email phone role createdAt updatedAt");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to load profile",
+    });
+  }
+};
+
+const updateUserProfile = async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required",
+      });
+    }
+
+    const updatedUser = await userModel
+      .findByIdAndUpdate(
+        req.userId,
+        {
+          name: String(name).trim(),
+          phone: String(phone || "").trim(),
+        },
+        { new: true }
+      )
+      .select("_id name email phone role createdAt updatedAt");
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to update profile",
+    });
+  }
+};
+
+const getUserAddresses = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.userId).select("addresses");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      addresses: user.addresses || [],
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to load addresses",
+    });
+  }
+};
+
+const saveUserAddress = async (req, res) => {
+  try {
+    const {
+      addressId,
+      label,
+      fullName,
+      phone,
+      streetAddress,
+      city,
+      state,
+      pincode,
+      isDefault,
+    } = req.body;
+
+    if (!fullName || !phone || !streetAddress) {
+      return res.status(400).json({
+        success: false,
+        message: "fullName, phone and streetAddress are required",
+      });
+    }
+
+    const user = await userModel.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const nextAddress = {
+      label: String(label || "Home").trim(),
+      fullName: String(fullName).trim(),
+      phone: String(phone).trim(),
+      streetAddress: String(streetAddress).trim(),
+      city: String(city || "").trim(),
+      state: String(state || "").trim(),
+      pincode: String(pincode || "").trim(),
+      isDefault: isDefault === true || isDefault === "true",
+    };
+
+    let targetAddressId = addressId;
+
+    if (addressId) {
+      const address = user.addresses.id(addressId);
+      if (!address) {
+        return res.status(404).json({
+          success: false,
+          message: "Address not found",
+        });
+      }
+
+      Object.assign(address, nextAddress);
+    } else {
+      user.addresses.push(nextAddress);
+      targetAddressId = user.addresses[user.addresses.length - 1]?._id;
+    }
+
+    if (nextAddress.isDefault) {
+      user.addresses.forEach((address) => {
+        address.isDefault = String(address._id) === String(targetAddressId);
+      });
+    } else if (user.addresses.length === 1) {
+      user.addresses[0].isDefault = true;
+    }
+
+    if (user.addresses.length > 0 && !user.addresses.some((address) => address.isDefault)) {
+      user.addresses[0].isDefault = true;
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Address saved successfully",
+      addresses: user.addresses,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to save address",
+    });
+  }
+};
+
+const deleteUserAddress = async (req, res) => {
+  try {
+    const { addressId } = req.params;
+
+    if (!addressId) {
+      return res.status(400).json({
+        success: false,
+        message: "addressId is required",
+      });
+    }
+
+    const user = await userModel.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const toDelete = user.addresses.id(addressId);
+    if (!toDelete) {
+      return res.status(404).json({ success: false, message: "Address not found" });
+    }
+
+    const deletedWasDefault = Boolean(toDelete.isDefault);
+    toDelete.deleteOne();
+
+    if (deletedWasDefault && user.addresses.length > 0) {
+      user.addresses[0].isDefault = true;
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Address removed successfully",
+      addresses: user.addresses,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to remove address",
+    });
+  }
+};
+
+export {
+  loginUser,
+  registerUser,
+  adminLogin,
+  getUserProfile,
+  updateUserProfile,
+  getUserAddresses,
+  saveUserAddress,
+  deleteUserAddress,
+};
