@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import "./css/navbar.css";
 
+const NAV_COLLAPSE_WIDTH = 1100;
+
 const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSubMenu, setActiveSubMenu] = useState(null);
@@ -41,12 +43,40 @@ const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
     return () => document.removeEventListener("mousedown", closeOnOutsideClick);
   }, []);
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setActiveSubMenu(null);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > NAV_COLLAPSE_WIDTH) {
+        setIsMobileMenuOpen(false);
+        setActiveSubMenu(null);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) {
+      document.body.style.removeProperty("overflow");
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.removeProperty("overflow");
+    };
+  }, [isMobileMenuOpen]);
+
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen((prev) => !prev);
   };
 
   const toggleSubMenu = (event, menuName) => {
-    if (window.innerWidth <= 992) {
+    if (window.innerWidth <= NAV_COLLAPSE_WIDTH) {
       event.preventDefault();
       setActiveSubMenu((prev) => (prev === menuName ? null : menuName));
     }
@@ -56,7 +86,8 @@ const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
     const element = document.querySelector(targetId);
     if (!element) return;
 
-    const offset = 80;
+    const headerElement = document.querySelector(".header-main");
+    const offset = Math.round(headerElement?.getBoundingClientRect().height || 80);
     const bodyRect = document.body.getBoundingClientRect().top;
     const elementRect = element.getBoundingClientRect().top;
     const elementPosition = elementRect - bodyRect;
@@ -122,7 +153,7 @@ const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
           <li className="nav-item has-mega">
             <a
               href="#catalog"
-              className="nav-link toggle-mega"
+              className={`nav-link toggle-mega ${activeSubMenu === "catalog" ? "expanded" : ""}`}
               onClick={(event) => toggleSubMenu(event, "catalog")}
             >
               Catalog
@@ -219,7 +250,7 @@ const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
           <li className="nav-item has-mega">
             <a
               href="#furniture"
-              className="nav-link toggle-mega"
+              className={`nav-link toggle-mega ${activeSubMenu === "furniture" ? "expanded" : ""}`}
               onClick={(event) => toggleSubMenu(event, "furniture")}
             >
               Furniture
@@ -309,6 +340,14 @@ const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
           </li>
         </ul>
       </nav>
+
+      <div
+        className={`navbar-backdrop ${isMobileMenuOpen ? "active" : ""}`}
+        onClick={() => {
+          setIsMobileMenuOpen(false);
+          setActiveSubMenu(null);
+        }}
+      />
 
       <div className="header-auth-group desktop-only">
         {isLoggedIn ? (
