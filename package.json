@@ -1,0 +1,17 @@
+{
+  "name": "naturevibes-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "install:frontend": "npm --prefix ./frontend install",
+    "install:backend": "npm --prefix ./Backend install",
+    "install:admin": "npm --prefix \"./admin pannel\" install",
+    "install:all": "npm run install:frontend && npm run install:backend && npm run install:admin",
+    "dev:frontend": "npm --prefix ./frontend run dev",
+    "dev:backend": "npm --prefix ./Backend run server",
+    "dev:admin": "npm --prefix \"./admin pannel\" run dev",
+    "build:frontend": "npm --prefix ./frontend run build",
+    "build:admin": "npm --prefix \"./admin pannel\" run build",
+    "start:backend": "npm --prefix ./Backend run start"
+  }
+}

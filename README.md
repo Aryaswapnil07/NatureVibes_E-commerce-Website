@@ -262,6 +262,15 @@ Auth headers supported by middleware:
 - `npm run preview`
 - `npm run lint`
 
+### Monorepo Root (`/`)
+
+- `npm run install:all`
+- `npm run dev:frontend`
+- `npm run dev:backend`
+- `npm run dev:admin`
+- `npm run build:frontend`
+- `npm run build:admin`
+
 ---
 
 ## 🧪 Notes
@@ -269,6 +278,84 @@ Auth headers supported by middleware:
 - Product images are uploaded as `image1`, `image2`, `image3`, `image4`.
 - Deleted products are soft deleted (`isDeleted: true`).
 - Frontend and admin both use `VITE_API_BASE_URL` for backend connectivity.
+
+---
+
+## 🚀 Deploy On Vercel (Step-by-Step)
+
+Deploy this monorepo as **3 separate Vercel projects**:
+
+### 1. Push code to GitHub
+
+```bash
+git add .
+git commit -m "Prepare monorepo for Vercel"
+git push origin <your-branch>
+```
+
+### 2. Deploy Backend first
+
+1. In Vercel dashboard, click **Add New Project**.
+2. Import your GitHub repo.
+3. Set **Root Directory** to `Backend`.
+4. Build settings can remain default (uses `Backend/vercel.json`).
+5. Add backend Environment Variables:
+   - `MONGODB_URI`
+   - `JWT_SECRET`
+   - `ADMIN_EMAIL`
+   - `ADMIN_PASSWORD`
+   - `CLOUDINARY_CLOUD_NAME`
+   - `CLOUDINARY_API_KEY`
+   - `CLOUDINARY_API_SECRET`
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_WEBHOOK_SECRET`
+   - `FRONTEND_URL` (set after frontend deploy URL is known)
+6. Deploy and copy backend URL (example: `https://naturevibes-backend.vercel.app`).
+
+### 3. Deploy Storefront
+
+1. Add another new project from the same repo.
+2. Set **Root Directory** to `frontend`.
+3. Add Environment Variable:
+   - `VITE_API_BASE_URL=https://<your-backend-domain>`
+4. Deploy and copy storefront URL.
+
+### 4. Update Backend `FRONTEND_URL`
+
+Go back to backend project settings and set:
+
+`FRONTEND_URL=https://<your-frontend-domain>`
+
+Then redeploy backend.
+
+### 5. Deploy Admin Panel
+
+1. Add third project from same repo.
+2. Set **Root Directory** to `admin pannel`.
+3. Add Environment Variable:
+   - `VITE_API_BASE_URL=https://<your-backend-domain>`
+4. Deploy.
+
+### 6. Configure Stripe webhook (if using Stripe)
+
+In Stripe Dashboard:
+
+1. Create webhook endpoint:
+   - `https://<your-backend-domain>/api/orders/stripe/webhook`
+2. Enable events:
+   - `checkout.session.completed`
+   - `checkout.session.expired`
+   - `checkout.session.async_payment_failed`
+3. Copy webhook signing secret and set it in backend Vercel env:
+   - `STRIPE_WEBHOOK_SECRET`
+4. Redeploy backend.
+
+### 7. Validate after deploy
+
+1. Open storefront and load product list.
+2. Place COD order.
+3. Verify order appears in admin panel.
+4. If Stripe enabled, test payment flow with Stripe test card.
 
 ---
 
