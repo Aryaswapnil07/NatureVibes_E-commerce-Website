@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, Package, ArrowRight, Home } from 'lucide-react';
 import confetti from 'canvas-confetti'; // Optional: npm install canvas-confetti
 import "../components/css/SuccessPage.css";
 
 const SuccessPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const order = location.state?.order;
 
   useEffect(() => {
     // Trigger Nature-themed Confetti (Greens and Golds)
@@ -50,7 +52,11 @@ const SuccessPage = () => {
         <div className="order-details-mini">
           <div className="detail-item">
             <Package size={20} />
-            <span>Estimated Delivery: 3-5 Business Days</span>
+            <span>
+              {order?.orderNumber
+                ? `Order ID: ${order.orderNumber}`
+                : "Estimated Delivery: 3-5 Business Days"}
+            </span>
           </div>
         </div>
 

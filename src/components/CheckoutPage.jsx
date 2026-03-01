@@ -1,120 +1,195 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Truck, CreditCard, ShieldCheck, ShoppingBag } from "lucide-react";
+import API_BASE_URL from "../config/api";
 import "../components/css/CheckoutPage.css";
 
-const CheckoutPage = ({ cartItems, totalAmount }) => {
+const objectIdRegex = /^[a-fA-F0-9]{24}$/;
+
+const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
+  const navigate = useNavigate();
   const [address, setAddress] = useState({
     fullName: "",
+    email: "",
     phone: "",
     pincode: "",
-    city: "Patna", 
+    city: "Patna",
     state: "Bihar",
     streetAddress: "",
   });
+  const [isPlacing, setIsPlacing] = useState(false);
+  const [error, setError] = useState("");
 
-  // Ensure page starts at top
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  const handleInputChange = (e) => {
-    setAddress({ ...address, [e.target.name]: e.target.value });
+  const handleInputChange = (event) => {
+    setAddress((prev) => ({ ...prev, [event.target.name]: event.target.value }));
   };
 
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const handlePayment = async () => {
-    // Basic Validation
-    if (!address.fullName || !address.phone || !address.streetAddress) {
-      alert("Please fill in all required delivery details.");
+  const handlePlaceOrder = async () => {
+    if (!address.fullName || !address.phone || !address.streetAddress || !address.email) {
+      setError("Please fill all required delivery details.");
       return;
     }
 
-    const res = await loadRazorpay();
-
-    if (!res) {
-      alert("Razorpay SDK failed to load. Are you online?");
+    if (cartItems.length === 0) {
+      setError("Your cart is empty.");
       return;
     }
 
-    const options = {
-      key: "YOUR_RAZORPAY_KEY_ID", // ⚠️ Replace with your actual Razorpay Key ID
-      amount: totalAmount * 100, // Amount in paisa
-      currency: "INR",
-      name: "Nature Vibes",
-      description: `Purchase of ${cartItems.length} items`,
-      image: "https://your-logo-url.com/logo.png", // Replace with your actual logo
-      handler: function (response) {
-        alert(`Payment Successful! \nPayment ID: ${response.razorpay_payment_id}`);
-        // Log transaction or redirect to a 'Success' page here
-      },
-      prefill: {
-        name: address.fullName,
-        contact: address.phone,
-      },
-      notes: {
-        delivery_address: `${address.streetAddress}, ${address.city}, ${address.state} - ${address.pincode}`,
-      },
-      theme: {
-        color: "#2e7d32", // Nature Vibes Green
-      },
-    };
+    setError("");
+    setIsPlacing(true);
 
-    const paymentObject = new window.Razorpay(options);
-    paymentObject.open();
+    try {
+      const payload = {
+        items: cartItems.map((item) => {
+          const normalizedItem = {
+            name: item.name,
+            image: item.image || "",
+            price: Number(item.price || 0),
+            quantity: Number(item.quantity || 1),
+          };
+
+          const sourceId = item.backendId || item.id;
+          if (sourceId && objectIdRegex.test(String(sourceId))) {
+            normalizedItem.productId = String(sourceId);
+          }
+
+          return normalizedItem;
+        }),
+        amount: Number(totalAmount || 0),
+        paymentMethod: "cod",
+        paymentStatus: "pending",
+        address: {
+          fullName: address.fullName,
+          phone: address.phone,
+          streetAddress: address.streetAddress,
+          city: address.city,
+          state: address.state,
+          pincode: address.pincode,
+        },
+        customer: {
+          name: address.fullName,
+          email: address.email,
+          phone: address.phone,
+        },
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/orders/place`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(userToken ? { token: userToken } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Unable to place order");
+      }
+
+      clearCart?.();
+      navigate("/success", { state: { order: data.order } });
+    } catch (placeError) {
+      setError(placeError.message || "Unable to place order");
+    } finally {
+      setIsPlacing(false);
+    }
   };
 
   return (
     <div className="nature-checkout-section">
       <div className="checkout-main-container">
-        
-        {/* LEFT: Address Form */}
         <div className="address-form-box">
           <h2 className="checkout-title">
             <Truck size={28} className="icon-green" /> Delivery Details
           </h2>
           <p className="checkout-subtitle">Where should we send your new plants?</p>
-          
+
           <div className="address-input-grid">
             <div className="input-group full-width">
               <label>Full Name *</label>
-              <input name="fullName" type="text" placeholder="Enter your name" onChange={handleInputChange} required />
+              <input
+                name="fullName"
+                type="text"
+                placeholder="Enter your name"
+                value={address.fullName}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="input-group">
+              <label>Email *</label>
+              <input
+                name="email"
+                type="email"
+                placeholder="name@email.com"
+                value={address.email}
+                onChange={handleInputChange}
+                required
+              />
             </div>
             <div className="input-group">
               <label>Phone Number *</label>
-              <input name="phone" type="tel" placeholder="10-digit mobile number" onChange={handleInputChange} required />
+              <input
+                name="phone"
+                type="tel"
+                placeholder="10-digit mobile number"
+                value={address.phone}
+                onChange={handleInputChange}
+                required
+              />
             </div>
             <div className="input-group">
-              <label>Pincode *</label>
-              <input name="pincode" type="text" placeholder="6-digit code" onChange={handleInputChange} required />
+              <label>Pincode</label>
+              <input
+                name="pincode"
+                type="text"
+                placeholder="6-digit code"
+                value={address.pincode}
+                onChange={handleInputChange}
+              />
             </div>
             <div className="input-group full-width">
               <label>Street Address *</label>
-              <input name="streetAddress" type="text" placeholder="House No, Building, Area" onChange={handleInputChange} required />
+              <input
+                name="streetAddress"
+                type="text"
+                placeholder="House No, Building, Area"
+                value={address.streetAddress}
+                onChange={handleInputChange}
+                required
+              />
             </div>
             <div className="input-group">
               <label>City</label>
-              <input name="city" type="text" value={address.city} readOnly />
+              <input
+                name="city"
+                type="text"
+                value={address.city}
+                onChange={handleInputChange}
+              />
             </div>
             <div className="input-group">
               <label>State</label>
-              <input name="state" type="text" value={address.state} readOnly />
+              <input
+                name="state"
+                type="text"
+                value={address.state}
+                onChange={handleInputChange}
+              />
             </div>
           </div>
         </div>
 
-        {/* RIGHT: Order Summary */}
         <div className="checkout-summary-box">
-          <h3 className="summary-title"><ShoppingBag size={20} /> Order Summary</h3>
-          
+          <h3 className="summary-title">
+            <ShoppingBag size={20} /> Order Summary
+          </h3>
+
           <div className="checkout-items-list">
             {cartItems.map((item) => (
               <div key={item.id} className="checkout-item-mini">
@@ -123,7 +198,7 @@ const CheckoutPage = ({ cartItems, totalAmount }) => {
                   <span className="mini-name">{item.name}</span>
                   <span className="mini-qty">Qty: {item.quantity}</span>
                 </div>
-                <span className="mini-price">₹{item.price * item.quantity}</span>
+                <span className="mini-price">Rs {item.price * item.quantity}</span>
               </div>
             ))}
           </div>
@@ -131,7 +206,7 @@ const CheckoutPage = ({ cartItems, totalAmount }) => {
           <div className="summary-pricing">
             <div className="price-row">
               <span>Subtotal</span>
-              <span>₹{totalAmount}</span>
+              <span>Rs {totalAmount}</span>
             </div>
             <div className="price-row">
               <span>Shipping</span>
@@ -139,20 +214,35 @@ const CheckoutPage = ({ cartItems, totalAmount }) => {
             </div>
             <div className="price-row total-final">
               <span>Total Payable</span>
-              <span>₹{totalAmount}</span>
+              <span>Rs {totalAmount}</span>
             </div>
           </div>
 
-          <button className="confirm-pay-btn" onClick={handlePayment}>
-            <CreditCard size={20} /> Pay Now via Razorpay
+          {error ? (
+            <p
+              style={{
+                marginBottom: "12px",
+                color: "#842029",
+                background: "#fff5f5",
+                border: "1px solid #f5c2c7",
+                borderRadius: "8px",
+                padding: "10px 12px",
+                fontSize: "14px",
+              }}
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <button className="confirm-pay-btn" onClick={handlePlaceOrder} disabled={isPlacing}>
+            <CreditCard size={20} /> {isPlacing ? "Placing Order..." : "Place Order (COD)"}
           </button>
 
           <div className="secure-badge">
-            <ShieldCheck size={16} /> 
-            <span>100% Secure SSL Encrypted Payment</span>
+            <ShieldCheck size={16} />
+            <span>Your delivery details are securely handled</span>
           </div>
         </div>
-
       </div>
     </div>
   );

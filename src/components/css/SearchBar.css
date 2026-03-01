@@ -12,9 +12,9 @@
     align-items: center;
     background: #f8f8f8;
     border: 1px solid #e0e0e0;
-    border-radius: 12px;
-    padding: 0 15px;
-    height: 45px;
+    border-radius: 10px;
+    padding: 0 12px;
+    height: 40px;
     transition: all 0.2s ease-in-out;
 }
 
@@ -22,7 +22,7 @@
 .search-input-container:focus-within {
     background: #ffffff;
     border-color: #2e7d32;
-    box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.1); 
+    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1); 
 }
 
 .search-input-container input {
@@ -31,8 +31,8 @@
     outline: none;
     width: 100%;
     height: 100%;
-    padding: 0 10px;
-    font-size: 0.95rem;
+    padding: 0 8px;
+    font-size: 0.9rem;
     color: #333;
 }
 
