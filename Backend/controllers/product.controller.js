@@ -31,6 +31,11 @@ const parseBoolean = (value, fallback = false) => {
   return fallback;
 };
 
+const sanitizeText = (value, fallback = "") => {
+  if (value === undefined || value === null) return fallback;
+  return String(value).trim();
+};
+
 const uploadProductImages = async (files, altText) => {
   const uploadedImages = [];
 
@@ -158,16 +163,21 @@ const addProduct = async (req, res) => {
     // CREATE PRODUCT
     // ======================
     const productPayload = {
-      name,
+      name: sanitizeText(name),
       slug: finalSlug,
-      sku,
-      brand,
-      description,
-      shortDescription,
-      productType,
-      category,
-      subCategory,
-      tags: tags ? tags.split(",") : [],
+      sku: sanitizeText(sku),
+      brand: sanitizeText(brand),
+      description: sanitizeText(description),
+      shortDescription: sanitizeText(shortDescription),
+      productType: sanitizeText(productType),
+      category: sanitizeText(category),
+      subCategory: sanitizeText(subCategory),
+      tags: tags
+        ? String(tags)
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+        : [],
       price,
       discountedPrice,
       costPrice,
@@ -264,15 +274,18 @@ const updateProduct = async (req, res) => {
     );
 
     const updatedPayload = {
-      name: nextName,
+      name: sanitizeText(nextName),
       slug: finalSlug,
-      sku: req.body.sku ?? existingProduct.sku,
-      brand: req.body.brand ?? existingProduct.brand,
-      description: nextDescription,
-      shortDescription: req.body.shortDescription ?? existingProduct.shortDescription,
-      productType: nextProductType,
-      category: req.body.category ?? existingProduct.category,
-      subCategory: req.body.subCategory ?? existingProduct.subCategory,
+      sku: sanitizeText(req.body.sku, existingProduct.sku),
+      brand: sanitizeText(req.body.brand, existingProduct.brand),
+      description: sanitizeText(nextDescription),
+      shortDescription: sanitizeText(
+        req.body.shortDescription,
+        existingProduct.shortDescription
+      ),
+      productType: sanitizeText(nextProductType),
+      category: sanitizeText(req.body.category, existingProduct.category),
+      subCategory: sanitizeText(req.body.subCategory, existingProduct.subCategory),
       tags:
         req.body.tags !== undefined
           ? String(req.body.tags)
