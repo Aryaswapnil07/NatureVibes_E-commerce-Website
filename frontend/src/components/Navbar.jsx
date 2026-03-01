@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { FiGrid, FiHome, FiInfo, FiLayers } from "react-icons/fi";
 import SearchBar from "./SearchBar";
 import "./css/navbar.css";
 
@@ -146,7 +147,10 @@ const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
         <ul className="nav-list">
           <li className="nav-item">
             <a href="#home" className="nav-link" onClick={(event) => handleNavigation(event, "#home")}>
-              Home
+              <span className="nav-link-stack">
+                <FiHome className="nav-link-icon" />
+                <span className="nav-link-label">Home</span>
+              </span>
             </a>
           </li>
 
@@ -156,7 +160,10 @@ const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
               className={`nav-link toggle-mega ${activeSubMenu === "catalog" ? "expanded" : ""}`}
               onClick={(event) => toggleSubMenu(event, "catalog")}
             >
-              Catalog
+              <span className="nav-link-stack">
+                <FiGrid className="nav-link-icon" />
+                <span className="nav-link-label">Catalog</span>
+              </span>
             </a>
             <div className={`mega-menu-container ${activeSubMenu === "catalog" ? "mobile-open" : ""}`}>
               <div className="modern-mega-grid">
@@ -253,7 +260,10 @@ const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
               className={`nav-link toggle-mega ${activeSubMenu === "furniture" ? "expanded" : ""}`}
               onClick={(event) => toggleSubMenu(event, "furniture")}
             >
-              Furniture
+              <span className="nav-link-stack">
+                <FiLayers className="nav-link-icon" />
+                <span className="nav-link-label">Furniture</span>
+              </span>
             </a>
             <div className={`mega-menu-container ${activeSubMenu === "furniture" ? "mobile-open" : ""}`}>
               <div className="mega-grid legacy-grid">
@@ -289,7 +299,10 @@ const Navbar = ({ onOpenLogin, onLogout, isLoggedIn, allProducts }) => {
 
           <li className="nav-item">
             <a href="#about" className="nav-link" onClick={(event) => handleNavigation(event, "#about")}>
-              About
+              <span className="nav-link-stack">
+                <FiInfo className="nav-link-icon" />
+                <span className="nav-link-label">About</span>
+              </span>
             </a>
           </li>
 
