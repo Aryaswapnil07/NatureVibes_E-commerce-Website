@@ -4,12 +4,19 @@ import { CheckCircle, Package, ArrowRight, Home } from 'lucide-react';
 import confetti from 'canvas-confetti'; // Optional: npm install canvas-confetti
 import "../components/css/SuccessPage.css";
 
-const SuccessPage = () => {
+const SuccessPage = ({ clearCart }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const order = location.state?.order;
+  const stripeOrderId = new URLSearchParams(location.search).get("orderId");
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const sessionId = searchParams.get("session_id");
+    if (sessionId) {
+      clearCart?.();
+    }
+
     // Trigger Nature-themed Confetti (Greens and Golds)
     const duration = 3 * 1000;
     const end = Date.now() + duration;
@@ -35,7 +42,7 @@ const SuccessPage = () => {
       }
     };
     frame();
-  }, []);
+  }, [clearCart, location.search]);
 
   return (
     <div className="success-page-wrapper">
@@ -55,6 +62,8 @@ const SuccessPage = () => {
             <span>
               {order?.orderNumber
                 ? `Order ID: ${order.orderNumber}`
+                : stripeOrderId
+                ? `Order Reference: ${stripeOrderId}`
                 : "Estimated Delivery: 3-5 Business Days"}
             </span>
           </div>

@@ -511,7 +511,7 @@ function App() {
           }
         />
 
-        <Route path="/success" element={<SuccessPage />} />
+        <Route path="/success" element={<SuccessPage clearCart={clearCart} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
 

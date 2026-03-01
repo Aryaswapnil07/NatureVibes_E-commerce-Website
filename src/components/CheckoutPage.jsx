@@ -1,13 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Truck, CreditCard, ShieldCheck, ShoppingBag } from "lucide-react";
 import API_BASE_URL from "../config/api";
 import "../components/css/CheckoutPage.css";
 
 const objectIdRegex = /^[a-fA-F0-9]{24}$/;
+const paymentOptions = [
+  { value: "cod", label: "Cash on Delivery (COD)" },
+  { value: "stripe", label: "Card / UPI via Stripe" },
+];
+
+const readApiResponse = async (response) => {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const payload = await response.json();
+    return { payload, rawText: "" };
+  }
+
+  const rawText = await response.text();
+  return { payload: null, rawText };
+};
 
 const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [address, setAddress] = useState({
     fullName: "",
     email: "",
@@ -17,6 +33,7 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
     state: "Bihar",
     streetAddress: "",
   });
+  const [paymentMethod, setPaymentMethod] = useState("cod");
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,9 +41,48 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
     window.scrollTo(0, 0);
   }, []);
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get("payment") === "cancelled") {
+      setError("Payment was cancelled. You can retry checkout.");
+    }
+  }, [location.search]);
+
   const handleInputChange = (event) => {
     setAddress((prev) => ({ ...prev, [event.target.name]: event.target.value }));
   };
+
+  const buildOrderPayload = () => ({
+    items: cartItems.map((item) => {
+      const normalizedItem = {
+        name: item.name,
+        image: item.image || "",
+        price: Number(item.price || 0),
+        quantity: Number(item.quantity || 1),
+      };
+
+      const sourceId = item.backendId || item.id;
+      if (sourceId && objectIdRegex.test(String(sourceId))) {
+        normalizedItem.productId = String(sourceId);
+      }
+
+      return normalizedItem;
+    }),
+    amount: Number(totalAmount || 0),
+    address: {
+      fullName: address.fullName,
+      phone: address.phone,
+      streetAddress: address.streetAddress,
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+    },
+    customer: {
+      name: address.fullName,
+      email: address.email,
+      phone: address.phone,
+    },
+  });
 
   const handlePlaceOrder = async () => {
     if (!address.fullName || !address.phone || !address.streetAddress || !address.email) {
@@ -43,39 +99,39 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
     setIsPlacing(true);
 
     try {
-      const payload = {
-        items: cartItems.map((item) => {
-          const normalizedItem = {
-            name: item.name,
-            image: item.image || "",
-            price: Number(item.price || 0),
-            quantity: Number(item.quantity || 1),
-          };
+      const payload = buildOrderPayload();
 
-          const sourceId = item.backendId || item.id;
-          if (sourceId && objectIdRegex.test(String(sourceId))) {
-            normalizedItem.productId = String(sourceId);
+      if (paymentMethod === "stripe") {
+        const response = await fetch(
+          `${API_BASE_URL}/api/orders/stripe/create-checkout-session`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(userToken ? { token: userToken } : {}),
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+        const { payload: data, rawText } = await readApiResponse(response);
+
+        if (!response.ok || !data?.success) {
+          if (!data && rawText.includes("Cannot POST")) {
+            throw new Error(
+              "Stripe API route not found. Restart backend and verify /api/orders/stripe/create-checkout-session is available."
+            );
           }
 
-          return normalizedItem;
-        }),
-        amount: Number(totalAmount || 0),
-        paymentMethod: "cod",
-        paymentStatus: "pending",
-        address: {
-          fullName: address.fullName,
-          phone: address.phone,
-          streetAddress: address.streetAddress,
-          city: address.city,
-          state: address.state,
-          pincode: address.pincode,
-        },
-        customer: {
-          name: address.fullName,
-          email: address.email,
-          phone: address.phone,
-        },
-      };
+          throw new Error(data?.message || "Unable to start Stripe checkout");
+        }
+
+        if (!data.checkoutUrl) {
+          throw new Error("Stripe checkout URL is missing");
+        }
+
+        window.location.href = data.checkoutUrl;
+        return;
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/orders/place`, {
         method: "POST",
@@ -83,12 +139,16 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
           "Content-Type": "application/json",
           ...(userToken ? { token: userToken } : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          paymentMethod: "cod",
+          paymentStatus: "pending",
+        }),
       });
-      const data = await response.json();
+      const { payload: data } = await readApiResponse(response);
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Unable to place order");
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || "Unable to place order");
       }
 
       clearCart?.();
@@ -218,6 +278,22 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
             </div>
           </div>
 
+          <div className="payment-methods">
+            <p className="payment-method-title">Payment Method</p>
+            {paymentOptions.map((option) => (
+              <label key={option.value} className="payment-method-option">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={option.value}
+                  checked={paymentMethod === option.value}
+                  onChange={(event) => setPaymentMethod(event.target.value)}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+
           {error ? (
             <p
               style={{
@@ -235,7 +311,14 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
           ) : null}
 
           <button className="confirm-pay-btn" onClick={handlePlaceOrder} disabled={isPlacing}>
-            <CreditCard size={20} /> {isPlacing ? "Placing Order..." : "Place Order (COD)"}
+            <CreditCard size={20} />{" "}
+            {isPlacing
+              ? paymentMethod === "stripe"
+                ? "Redirecting to Stripe..."
+                : "Placing Order..."
+              : paymentMethod === "stripe"
+              ? "Pay Securely with Stripe"
+              : "Place Order (COD)"}
           </button>
 
           <div className="secure-badge">

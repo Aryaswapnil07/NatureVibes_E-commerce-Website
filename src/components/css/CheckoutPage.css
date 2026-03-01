@@ -165,6 +165,29 @@
     color: var(--dark);
 }
 
+.payment-methods {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed #e9ecef;
+}
+
+.payment-method-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #444;
+    margin-bottom: 10px;
+}
+
+.payment-method-option {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #444;
+    padding: 8px 0;
+    cursor: pointer;
+}
+
 /* Payment Button */
 .confirm-pay-btn {
     width: 100%;
@@ -217,5 +240,94 @@
 
     .address-form-box {
         padding: 25px;
+    }
+}
+
+@media (max-width: 768px) {
+    .nature-checkout-section {
+        padding: 100px 4% 40px;
+    }
+
+    .checkout-main-container {
+        gap: 20px;
+    }
+
+    .address-form-box,
+    .checkout-summary-box {
+        min-width: 0;
+        padding: 20px;
+        border-radius: 18px;
+    }
+
+    .checkout-title {
+        font-size: 1.45rem;
+    }
+
+    .summary-title {
+        font-size: 1.15rem;
+    }
+
+    .checkout-items-list {
+        max-height: 220px;
+    }
+
+    .total-final {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 540px) {
+    .nature-checkout-section {
+        padding: 92px 3.5% 30px;
+    }
+
+    .address-form-box,
+    .checkout-summary-box {
+        padding: 16px;
+    }
+
+    .checkout-title {
+        font-size: 1.25rem;
+    }
+
+    .checkout-subtitle {
+        font-size: 0.86rem;
+        margin-bottom: 20px;
+    }
+
+    .input-group label {
+        font-size: 0.8rem;
+    }
+
+    .input-group input {
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .checkout-item-mini {
+        gap: 10px;
+    }
+
+    .checkout-item-mini img {
+        width: 52px;
+        height: 52px;
+    }
+
+    .mini-name {
+        font-size: 0.83rem;
+    }
+
+    .mini-price {
+        font-size: 0.85rem;
+    }
+
+    .payment-method-option {
+        font-size: 0.85rem;
+    }
+
+    .confirm-pay-btn {
+        padding: 14px;
+        font-size: 0.9rem;
+        margin-top: 18px;
     }
 }

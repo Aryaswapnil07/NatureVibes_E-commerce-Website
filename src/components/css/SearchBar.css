@@ -141,3 +141,49 @@
     font-size: 0.95rem;
     background: white;
 }
+
+@media (max-width: 768px) {
+    .search-dropdown {
+        max-height: 55vh;
+        margin-top: 6px;
+        border-radius: 10px;
+    }
+
+    .suggestion-item {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+
+    .suggest-img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .suggest-name {
+        font-size: 0.88rem;
+    }
+
+    .suggest-cat {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .search-input-container {
+        height: 38px;
+        padding: 0 10px;
+    }
+
+    .search-input-container input {
+        font-size: 0.85rem;
+    }
+
+    .search-dropdown {
+        max-height: 50vh;
+    }
+
+    .no-result {
+        padding: 18px 12px;
+        font-size: 0.85rem;
+    }
+}

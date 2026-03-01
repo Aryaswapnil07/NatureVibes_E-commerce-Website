@@ -78,6 +78,7 @@ NatureVibes/
 - **Backend:** Node.js, Express 5, MongoDB, Mongoose
 - **Auth:** JWT + bcryptjs
 - **Media:** Multer + Cloudinary
+- **Payments:** Stripe Checkout + Webhook
 
 ---
 
@@ -120,6 +121,9 @@ CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=your_admin_password
+FRONTEND_URL=http://localhost:5173
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 ```
 
 > ℹ️ `MONGODB_URI` should be the base connection string (the backend app appends `/NatureVibes` internally).
@@ -164,6 +168,12 @@ Default dev URLs:
 - Storefront: `http://localhost:5173`
 - Admin Panel: `http://localhost:5174`
 - Backend API: `http://localhost:9000` (or your configured `PORT`)
+
+For local Stripe webhook testing (optional), run Stripe CLI in a 4th terminal:
+
+```bash
+stripe listen --forward-to localhost:9000/api/orders/stripe/webhook
+```
 
 ---
 
@@ -214,6 +224,8 @@ Default dev URLs:
 ### Orders
 
 - `POST /api/orders/place` (optional auth)
+- `POST /api/orders/stripe/create-checkout-session` (optional auth)
+- `POST /api/orders/stripe/webhook` (Stripe server-to-server)
 - `GET /api/orders/my` (auth)
 - `GET /api/orders/list` (admin)
 - `GET /api/orders/summary` (admin)

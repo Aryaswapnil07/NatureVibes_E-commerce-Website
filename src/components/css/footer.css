@@ -153,4 +153,46 @@
   .new-footer {
     padding: 40px 20px;
   }
+
+  .footer-col-left,
+  .footer-col-right {
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+  }
+
+  .contact-link {
+    width: 100%;
+    word-break: break-word;
+  }
+
+  .social-row {
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .new-footer {
+    padding: 32px 14px;
+  }
+
+  .footer-heading {
+    margin-bottom: 16px;
+  }
+
+  .footer-text {
+    font-size: 0.88rem;
+    margin-bottom: 26px;
+  }
+
+  .newsletter-input {
+    font-size: 0.9rem;
+  }
+
+  .footer-copyright {
+    padding-top: 26px;
+    margin-top: 20px;
+    font-size: 0.74rem;
+  }
 }
