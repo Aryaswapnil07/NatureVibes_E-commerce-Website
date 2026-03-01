@@ -1,5 +1,5 @@
 .related-section {
-    padding: 60px 5%;
+    padding: clamp(36px, 6vw, 60px) clamp(12px, 4vw, 40px);
     background-color: #ffffff;
     border-top: 1px solid #eeeeee;
 }
@@ -35,8 +35,8 @@
 
 /* Card Styling */
 .related-card {
-    min-width: 240px;
-    max-width: 240px;
+    min-width: clamp(190px, 23vw, 240px);
+    max-width: clamp(190px, 23vw, 240px);
     background: #f8fcf8;
     border-radius: 18px;
     overflow: hidden;
@@ -121,7 +121,7 @@
 
 @media (max-width: 768px) {
     .related-section {
-        padding: 44px 4%;
+        padding: 44px clamp(10px, 3.5vw, 20px);
     }
 
     .related-header {
@@ -149,7 +149,7 @@
 
 @media (max-width: 480px) {
     .related-section {
-        padding: 32px 3.5%;
+        padding: 32px 10px;
     }
 
     .related-title {

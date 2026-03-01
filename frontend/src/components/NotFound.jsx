@@ -61,7 +61,7 @@ const NotFound = () => {
 
 const styles = {
   container: {
-    height: '100vh',
+    minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -69,16 +69,16 @@ const styles = {
     textAlign: 'center',
     backgroundColor: '#f9fafb',
     fontFamily: 'system-ui, sans-serif',
-    padding: '20px',
+    padding: 'clamp(14px, 4vw, 28px)',
   },
   title: {
-    fontSize: '6rem',
+    fontSize: 'clamp(3.4rem, 16vw, 6rem)',
     margin: '10px 0',
     color: '#064e3b',
     fontWeight: '800',
   },
   text: {
-    fontSize: '1.2rem',
+    fontSize: 'clamp(0.95rem, 3.2vw, 1.2rem)',
     color: '#374151',
     marginBottom: '30px',
     lineHeight: '1.6',
@@ -86,10 +86,13 @@ const styles = {
   buttonGroup: {
     display: 'flex',
     gap: '15px',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   button: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center',
     padding: '12px 24px',
     borderRadius: '50px',
     textDecoration: 'none',
