@@ -11,10 +11,23 @@ import { handleStripeWebhook } from "./controllers/order.controller.js";
 const app = express();
 const port = process.env.PORT || 4000;
 
-connectDB();
+connectDB().catch((error) => {
+  console.error("Initial database connection failed:", error.message);
+});
 connectCloudinary();
 
 app.use(cors());
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    return res.status(503).json({
+      success: false,
+      message: "Database connection failed. Please try again.",
+    });
+  }
+});
 
 app.post(
   "/api/orders/stripe/webhook",
