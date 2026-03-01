@@ -30,7 +30,7 @@ It includes:
 
 ```text
 NatureVibes/
-├── src/                  # Customer frontend (React + Vite)
+├── frontend/             # Customer frontend (React + Vite)
 ├── Backend/              # API server (Express + MongoDB)
 └── admin pannel/         # Admin frontend (React + Vite)
 ```
@@ -95,7 +95,9 @@ cd NatureVibes
 
 ```bash
 # Storefront frontend
+cd frontend
 npm install
+cd ..
 
 # Backend
 cd Backend
@@ -128,7 +130,7 @@ STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 
 > ℹ️ `MONGODB_URI` should be the base connection string (the backend app appends `/NatureVibes` internally).
 
-Create `/.env` (storefront):
+Create `/frontend/.env` (storefront):
 
 ```env
 VITE_API_BASE_URL=http://localhost:9000
@@ -154,6 +156,7 @@ npm run server
 
 ```bash
 # Terminal 2: Storefront frontend
+cd frontend
 npm run dev
 ```
 
@@ -240,7 +243,7 @@ Auth headers supported by middleware:
 
 ## 📦 Scripts
 
-### Storefront (`/`)
+### Storefront (`/frontend`)
 
 - `npm run dev`
 - `npm run build`
