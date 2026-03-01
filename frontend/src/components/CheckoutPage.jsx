@@ -1,13 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Truck, CreditCard, ShieldCheck, ShoppingBag } from "lucide-react";
+import {
+  FiTruck,
+  FiShoppingBag,
+  FiCreditCard,
+  FiShield,
+  FiUser,
+  FiMail,
+  FiPhone,
+  FiMapPin,
+  FiHome,
+  FiMap,
+  FiDollarSign,
+  FiCheckCircle,
+} from "react-icons/fi";
 import API_BASE_URL from "../config/api";
 import "../components/css/CheckoutPage.css";
 
 const objectIdRegex = /^[a-fA-F0-9]{24}$/;
 const paymentOptions = [
-  { value: "cod", label: "Cash on Delivery (COD)" },
-  { value: "stripe", label: "Card / UPI via Stripe" },
+  { value: "cod", label: "Cash on Delivery (COD)", icon: FiDollarSign },
+  { value: "stripe", label: "Card / UPI via Stripe", icon: FiCreditCard },
 ];
 
 const readApiResponse = async (response) => {
@@ -165,13 +178,15 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
       <div className="checkout-main-container">
         <div className="address-form-box">
           <h2 className="checkout-title">
-            <Truck size={28} className="icon-green" /> Delivery Details
+            <FiTruck size={28} className="icon-green" /> Delivery Details
           </h2>
           <p className="checkout-subtitle">Where should we send your new plants?</p>
 
           <div className="address-input-grid">
             <div className="input-group full-width">
-              <label>Full Name *</label>
+              <label className="label-with-icon">
+                <FiUser className="label-icon" /> Full Name *
+              </label>
               <input
                 name="fullName"
                 type="text"
@@ -182,7 +197,9 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
               />
             </div>
             <div className="input-group">
-              <label>Email *</label>
+              <label className="label-with-icon">
+                <FiMail className="label-icon" /> Email *
+              </label>
               <input
                 name="email"
                 type="email"
@@ -193,7 +210,9 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
               />
             </div>
             <div className="input-group">
-              <label>Phone Number *</label>
+              <label className="label-with-icon">
+                <FiPhone className="label-icon" /> Phone Number *
+              </label>
               <input
                 name="phone"
                 type="tel"
@@ -204,7 +223,9 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
               />
             </div>
             <div className="input-group">
-              <label>Pincode</label>
+              <label className="label-with-icon">
+                <FiMapPin className="label-icon" /> Pincode
+              </label>
               <input
                 name="pincode"
                 type="text"
@@ -214,7 +235,9 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
               />
             </div>
             <div className="input-group full-width">
-              <label>Street Address *</label>
+              <label className="label-with-icon">
+                <FiHome className="label-icon" /> Street Address *
+              </label>
               <input
                 name="streetAddress"
                 type="text"
@@ -225,7 +248,9 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
               />
             </div>
             <div className="input-group">
-              <label>City</label>
+              <label className="label-with-icon">
+                <FiMap className="label-icon" /> City
+              </label>
               <input
                 name="city"
                 type="text"
@@ -234,7 +259,9 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
               />
             </div>
             <div className="input-group">
-              <label>State</label>
+              <label className="label-with-icon">
+                <FiMapPin className="label-icon" /> State
+              </label>
               <input
                 name="state"
                 type="text"
@@ -247,7 +274,7 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
 
         <div className="checkout-summary-box">
           <h3 className="summary-title">
-            <ShoppingBag size={20} /> Order Summary
+            <FiShoppingBag size={20} /> Order Summary
           </h3>
 
           <div className="checkout-items-list">
@@ -280,18 +307,33 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
 
           <div className="payment-methods">
             <p className="payment-method-title">Payment Method</p>
-            {paymentOptions.map((option) => (
-              <label key={option.value} className="payment-method-option">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={option.value}
-                  checked={paymentMethod === option.value}
-                  onChange={(event) => setPaymentMethod(event.target.value)}
-                />
-                <span>{option.label}</span>
-              </label>
-            ))}
+            {paymentOptions.map((option) => {
+              const OptionIcon = option.icon;
+              const isSelected = paymentMethod === option.value;
+              return (
+                <label
+                  key={option.value}
+                  className={`payment-method-option ${isSelected ? "selected" : ""}`}
+                >
+                  <span className="payment-option-start">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value={option.value}
+                      checked={isSelected}
+                      onChange={(event) => setPaymentMethod(event.target.value)}
+                    />
+                    <span className="payment-option-content">
+                      <OptionIcon className="payment-option-icon" />
+                      <span>{option.label}</span>
+                    </span>
+                  </span>
+                  <FiCheckCircle
+                    className={`payment-option-check ${isSelected ? "visible" : ""}`}
+                  />
+                </label>
+              );
+            })}
           </div>
 
           {error ? (
@@ -311,7 +353,7 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
           ) : null}
 
           <button className="confirm-pay-btn" onClick={handlePlaceOrder} disabled={isPlacing}>
-            <CreditCard size={20} />{" "}
+            <FiCreditCard size={20} className="btn-icon" />{" "}
             {isPlacing
               ? paymentMethod === "stripe"
                 ? "Redirecting to Stripe..."
@@ -322,7 +364,7 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
           </button>
 
           <div className="secure-badge">
-            <ShieldCheck size={16} />
+            <FiShield size={16} />
             <span>Your delivery details are securely handled</span>
           </div>
         </div>

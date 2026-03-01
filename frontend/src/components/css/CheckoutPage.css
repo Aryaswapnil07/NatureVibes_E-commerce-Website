@@ -36,7 +36,14 @@
     font-weight: 700;
 }
 
-.icon-green { color: var(--green); }
+.icon-green {
+    color: var(--green);
+    transition: transform 0.25s ease;
+}
+
+.checkout-title:hover .icon-green {
+    transform: translateY(-2px) scale(1.04);
+}
 
 .checkout-subtitle {
     color: #888;
@@ -64,6 +71,22 @@
     font-size: 0.85rem;
     font-weight: 600;
     color: #444;
+}
+
+.label-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.label-icon {
+    color: #8fa497;
+    transition: color 0.25s ease, transform 0.25s ease;
+}
+
+.input-group:focus-within .label-icon {
+    color: var(--green);
+    transform: translateY(-1px) scale(1.05);
 }
 
 .input-group input {
@@ -187,12 +210,77 @@
 
 .payment-method-option {
     display: flex;
-    gap: 10px;
     align-items: center;
+    justify-content: space-between;
     font-size: 0.9rem;
     color: #444;
-    padding: 8px 0;
+    padding: 12px 14px;
     cursor: pointer;
+    border: 1px solid #e7ece8;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    background: #ffffff;
+    transition: all 0.25s ease;
+}
+
+.payment-method-option:last-child {
+    margin-bottom: 0;
+}
+
+.payment-option-start {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.payment-option-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.payment-option-icon {
+    color: #667f6f;
+    transition: color 0.25s ease, transform 0.25s ease;
+}
+
+.payment-method-option input {
+    accent-color: var(--green);
+}
+
+.payment-option-check {
+    font-size: 1rem;
+    color: var(--green);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease;
+}
+
+.payment-option-check.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.payment-method-option:hover {
+    border-color: #cfe1d2;
+    background: #f7fbf8;
+    transform: translateY(-1px);
+}
+
+.payment-method-option:hover .payment-option-icon {
+    transform: scale(1.08);
+}
+
+.payment-method-option.selected {
+    border-color: var(--green);
+    background: #f4fbf5;
+    box-shadow: 0 8px 16px rgba(46, 125, 50, 0.1);
+}
+
+.payment-method-option.selected .payment-option-icon {
+    color: var(--green);
 }
 
 /* Payment Button */
@@ -218,6 +306,14 @@
     background: var(--green);
     transform: translateY(-3px);
     box-shadow: 0 10px 20px rgba(46, 125, 50, 0.2);
+}
+
+.confirm-pay-btn .btn-icon {
+    transition: transform 0.25s ease;
+}
+
+.confirm-pay-btn:hover .btn-icon {
+    transform: translateX(2px) scale(1.06);
 }
 
 .secure-badge {
