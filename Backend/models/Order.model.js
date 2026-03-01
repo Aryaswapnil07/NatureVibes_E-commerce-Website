@@ -57,7 +57,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cod", "razorpay", "upi", "card", "netbanking"],
+      enum: ["cod", "razorpay", "upi", "card", "netbanking", "stripe"],
       default: "cod",
     },
     paymentStatus: {
@@ -70,6 +70,9 @@ const orderSchema = new mongoose.Schema(
       ref: "user",
       required: false,
     },
+    stripeSessionId: { type: String, default: "" },
+    stripePaymentIntentId: { type: String, default: "" },
+    paidAt: { type: Date, default: null },
     address: { type: addressSchema, required: true },
     customer: { type: customerSchema, default: () => ({}) },
   },
@@ -80,6 +83,7 @@ orderSchema.index({ createdAt: -1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ user: 1 });
+orderSchema.index({ stripeSessionId: 1 });
 
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
 
