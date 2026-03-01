@@ -36,6 +36,11 @@ const sanitizeText = (value, fallback = "") => {
   return String(value).trim();
 };
 
+const normalizeSku = (value) => {
+  const nextSku = sanitizeText(value);
+  return nextSku ? nextSku.toUpperCase() : undefined;
+};
+
 const uploadProductImages = async (files, altText) => {
   const uploadedImages = [];
 
@@ -165,7 +170,7 @@ const addProduct = async (req, res) => {
     const productPayload = {
       name: sanitizeText(name),
       slug: finalSlug,
-      sku: sanitizeText(sku),
+      sku: normalizeSku(sku),
       brand: sanitizeText(brand),
       description: sanitizeText(description),
       shortDescription: sanitizeText(shortDescription),
@@ -214,6 +219,15 @@ const addProduct = async (req, res) => {
     });
   } catch (error) {
     console.error("Add Product Error:", error);
+
+    if (error?.code === 11000 && error?.keyPattern?.sku) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "SKU already exists. Use a unique SKU value or leave SKU empty.",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: error.message,
@@ -273,10 +287,15 @@ const updateProduct = async (req, res) => {
       existingProduct._id
     );
 
+    const nextSku =
+      req.body.sku !== undefined
+        ? normalizeSku(req.body.sku)
+        : normalizeSku(existingProduct.sku);
+
     const updatedPayload = {
       name: sanitizeText(nextName),
       slug: finalSlug,
-      sku: sanitizeText(req.body.sku, existingProduct.sku),
+      sku: nextSku,
       brand: sanitizeText(req.body.brand, existingProduct.brand),
       description: sanitizeText(nextDescription),
       shortDescription: sanitizeText(
@@ -332,6 +351,15 @@ const updateProduct = async (req, res) => {
     });
   } catch (error) {
     console.error("Update Product Error:", error);
+
+    if (error?.code === 11000 && error?.keyPattern?.sku) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "SKU already exists. Use a unique SKU value or leave SKU empty.",
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: error.message || "Unable to update product",

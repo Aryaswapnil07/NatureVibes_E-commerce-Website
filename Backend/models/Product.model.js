@@ -172,6 +172,15 @@ const productSchema = new mongoose.Schema(
 // INDEXES (for performance)
 // ======================
 productSchema.index({ slug: 1 });
+productSchema.index(
+  { sku: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      sku: { $exists: true, $type: "string", $ne: "" },
+    },
+  }
+);
 productSchema.index({ category: 1 });
 productSchema.index({ isPublished: 1 });
 

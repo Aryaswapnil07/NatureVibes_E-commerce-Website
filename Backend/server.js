@@ -29,6 +29,10 @@ app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 app.use("/api/orders", orderRouter);
 
-app.listen(port, () => {
-  console.log(`Server started on PORT: ${port}`);
-});
+if (process.env.VERCEL !== "1") {
+  app.listen(port, () => {
+    console.log(`Server started on PORT: ${port}`);
+  });
+}
+
+export default app;
