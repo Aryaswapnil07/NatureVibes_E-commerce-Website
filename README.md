@@ -1,198 +1,234 @@
-# 🌿 NatureVibes
+# NatureVibes
 
-<p align="center">
-  <strong>Full-Stack Plant E-Commerce Platform</strong><br/>
-  Customer Storefront + Admin Panel + REST API
-</p>
+Full-stack plant ecommerce monorepo with:
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Frontend-React%2019-61DAFB?style=for-the-badge&logo=react" alt="React badge" />
-  <img src="https://img.shields.io/badge/Backend-Node%20%2B%20Express-339933?style=for-the-badge&logo=node.js" alt="Node badge" />
-  <img src="https://img.shields.io/badge/Database-MongoDB-47A248?style=for-the-badge&logo=mongodb" alt="MongoDB badge" />
-  <img src="https://img.shields.io/badge/Admin-Dashboard-1F2937?style=for-the-badge" alt="Admin badge" />
-</p>
+- `frontend/`: customer storefront built with React and Vite
+- `Backend/`: Express API with MongoDB, Cloudinary, JWT auth, and Stripe support
+- `admin pannel/`: admin dashboard built with React and Vite
 
----
+The current codebase supports product catalog browsing, customer accounts, address management, order placement, Stripe checkout, and admin product/order management.
 
-## ✨ Overview
-
-NatureVibes is a production-style ecommerce project focused on plants and gardening products.  
-It includes:
-
-- 🛍️ A user-facing storefront (`/`)
-- 🧑‍💼 A dedicated admin panel (`/dashboard`)
-- ⚙️ A backend API for auth, products, users, addresses, and orders
-- ☁️ Cloudinary image upload support with multi-image product forms
-
----
-
-## 🧩 Monorepo Structure
+## Repository Layout
 
 ```text
 NatureVibes/
-├── frontend/             # Customer frontend (React + Vite)
-├── Backend/              # API server (Express + MongoDB)
-└── admin pannel/         # Admin frontend (React + Vite)
+|-- frontend/
+|-- Backend/
+`-- admin pannel/
 ```
 
----
+Note: the admin directory is literally named `admin pannel`, so keep the quotes when running shell commands against that path.
 
-## 🚀 Core Features
+## Tech Stack
 
-### 👤 User Side
+### Frontend
 
-- JWT login and registration
-- Product catalog fetched from backend
-- Search experience in navbar
-- Cart + checkout flow
-- Profile section with:
-  - Profile details
-  - Current orders
-  - Order history
-  - Address book management
+- React 19
+- React Router 7
+- Vite 7
+- Tailwind CSS 4
+- Framer Motion
 
-### 🧑‍💻 Admin Side
+### Backend
 
-- Admin authentication
-- Dashboard summary (orders, revenue, users, products)
-- Product listing and soft delete
-- Add new plant/product
-- Edit existing product
-- Upload up to 4 product images (`image1` to `image4`)
+- Node.js
+- Express 5
+- MongoDB with Mongoose
+- JWT authentication
+- bcryptjs password hashing
+- Multer uploads
+- Cloudinary media storage
+- Stripe Checkout and webhook handling
+
+## Core Features
+
+### Storefront
+
+- User registration and login
+- Product catalog fetched from the API
+- Search and category-driven browsing
+- Product detail pages
+- Cart and checkout flow
+- Saved addresses
+- Current orders and order history
+- Stripe success page handling
+
+### Admin Panel
+
+- Separate admin login
+- Dashboard summary for orders, revenue, users, and products
+- Product creation and editing
+- Multi-image uploads (`image1` to `image4`)
+- Product soft delete
 - Order list and status updates
 
-### 🔧 Backend API
+### API
 
-- User auth and profile APIs
-- Address CRUD APIs
-- Product CRUD APIs
-- Order placement and tracking APIs
-- Admin reporting endpoints
+- User auth and profile endpoints
+- Address CRUD endpoints
+- Product CRUD plus category listing
+- Order placement and Stripe checkout session creation
+- Stripe webhook endpoint
+- Lightweight in-memory rate limiting for auth endpoints
 
----
+## Prerequisites
 
-## 🛠️ Tech Stack
+- Node.js 20+ recommended
+- npm
+- MongoDB instance
+- Cloudinary account for image uploads
+- Stripe account if you want card payments
 
-- **Frontend (User):** React 19, React Router, Vite, CSS, Tailwind plugin
-- **Frontend (Admin):** React 19, React Router, Vite
-- **Backend:** Node.js, Express 5, MongoDB, Mongoose
-- **Auth:** JWT + bcryptjs
-- **Media:** Multer + Cloudinary
-- **Payments:** Stripe Checkout + Webhook
+## Quick Start
 
----
+### 1. Install dependencies
 
-## ⚙️ Local Setup
-
-### 1. Clone
+From the repository root:
 
 ```bash
-git clone <your-repo-url>
-cd NatureVibes
+npm run install:all
 ```
 
-### 2. Install Dependencies
+You can also install each app independently:
 
 ```bash
-# Storefront frontend
-cd frontend
-npm install
-cd ..
-
-# Backend
-cd Backend
-npm install
-cd ..
-
-# Admin panel
-cd "admin pannel"
-npm install
-cd ..
+cd frontend && npm install
+cd ../Backend && npm install
+cd "../admin pannel" && npm install
 ```
 
-### 3. Configure Environment Variables
+### 2. Configure environment variables
 
 Create `Backend/.env`:
 
 ```env
 PORT=9000
 MONGODB_URI=mongodb://127.0.0.1:27017
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=replace_this_with_a_long_random_secret
+JWT_EXPIRES_IN=7d
+ADMIN_JWT_EXPIRES_IN=12h
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=replace_this_with_a_strong_admin_password
+FRONTEND_URL=http://localhost:5173
+ADMIN_URL=http://localhost:5174
+CLIENT_URL=http://localhost:5173
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=your_admin_password
-FRONTEND_URL=http://localhost:5173
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 ```
 
-> ℹ️ `MONGODB_URI` should be the base connection string (the backend app appends `/NatureVibes` internally).
+Notes:
 
-Create `/frontend/.env` (storefront):
+- `PORT` should be set to `9000` unless you also change the frontend API URL configuration.
+- `MONGODB_URI` may be either a base connection string or a full database URL. If the database name is missing, the backend appends `/NatureVibes` automatically.
+- CORS allows requests from `FRONTEND_URL`, `ADMIN_URL`, and `CLIENT_URL`.
+- `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are only required for Stripe checkout.
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used for admin login and admin token validation.
+
+Create `frontend/.env`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:9000
 ```
 
-Create `/admin pannel/.env`:
+Create `admin pannel/.env`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:9000
 ```
 
-> ✅ Important: backend code uses `ADMIN_EMAIL` and `ADMIN_PASSWORD` for admin login.
+### 3. Run the apps
 
-### 4. Run the Apps
-
-Use 3 terminals:
+Use three terminals:
 
 ```bash
-# Terminal 1: Backend
-cd Backend
-npm run server
+npm run dev:backend
 ```
 
 ```bash
-# Terminal 2: Storefront frontend
-cd frontend
-npm run dev
+npm run dev:frontend
 ```
 
 ```bash
-# Terminal 3: Admin frontend
-cd "admin pannel"
-npm run dev
+npm run dev:admin
 ```
 
-Default dev URLs:
+Equivalent direct commands:
+
+```bash
+cd Backend && npm run server
+cd frontend && npm run dev
+cd "admin pannel" && npm run dev
+```
+
+Default local URLs:
 
 - Storefront: `http://localhost:5173`
-- Admin Panel: `http://localhost:5174`
-- Backend API: `http://localhost:9000` (or your configured `PORT`)
+- Admin panel: `http://localhost:5174`
+- Backend API: `http://localhost:9000`
 
-For local Stripe webhook testing (optional), run Stripe CLI in a 4th terminal:
+If you skip `PORT=9000`, the backend falls back to `4000`, and both frontend apps must be pointed at that port manually.
 
-```bash
-stripe listen --forward-to localhost:9000/api/orders/stripe/webhook
-```
+## Available Scripts
 
----
+### Root
 
-## 🧭 Main Routes
+- `npm run install:frontend`
+- `npm run install:backend`
+- `npm run install:admin`
+- `npm run install:all`
+- `npm run dev:frontend`
+- `npm run dev:backend`
+- `npm run dev:admin`
+- `npm run build`
+- `npm run build:frontend`
+- `npm run build:admin`
+- `npm run start:backend`
 
-### Storefront
+Note: root `npm run build` installs and builds the storefront only, and matches the root `vercel.json` output path of `frontend/dist`.
+
+### Backend
+
+- `npm run server`
+- `npm start`
+
+### Frontend
+
+- `npm run dev`
+- `npm run build`
+- `npm run preview`
+- `npm run lint`
+
+### Admin Panel
+
+- `npm run dev`
+- `npm run build`
+- `npm run preview`
+- `npm run lint`
+
+## Application Routes
+
+### Storefront routes
 
 - `/`
 - `/product/:productId`
 - `/checkout`
+- `/success`
 - `/account/profile`
 - `/account/orders/current`
 - `/account/orders/history`
 - `/account/addresses`
+- `/profile` -> redirects to `/account/profile`
+- `/account` -> redirects to `/account/profile`
+- `/my-orders` -> redirects to `/account/orders/current`
+- `/order-history` -> redirects to `/account/orders/history`
+- `/my-addresses` -> redirects to `/account/addresses`
+- `/logout`
+- `/account/logout`
 
-### Admin
+### Admin routes
 
 - `/login`
 - `/dashboard`
@@ -201,180 +237,154 @@ stripe listen --forward-to localhost:9000/api/orders/stripe/webhook
 - `/add-plant`
 - `/edit-plant/:productId`
 
----
+## API Overview
 
-## 🔌 API Reference (Current)
+Base URL: `http://localhost:9000`
 
-### Users
+### Auth headers
 
-- `POST /api/users/register`
-- `POST /api/users/login`
-- `POST /api/users/admin`
-- `GET /api/users/profile` (auth)
-- `PATCH /api/users/profile` (auth)
-- `GET /api/users/addresses` (auth)
-- `POST /api/users/address` (auth)
-- `DELETE /api/users/address/:addressId` (auth)
-
-### Products
-
-- `POST /api/products/add` (admin, multipart form-data)
-- `GET /api/products/list`
-- `POST /api/products/single`
-- `PATCH /api/products/update` (admin, multipart form-data)
-- `POST /api/products/remove` (admin)
-
-### Orders
-
-- `POST /api/orders/place` (optional auth)
-- `POST /api/orders/stripe/create-checkout-session` (optional auth)
-- `POST /api/orders/stripe/webhook` (Stripe server-to-server)
-- `GET /api/orders/my` (auth)
-- `GET /api/orders/list` (admin)
-- `GET /api/orders/summary` (admin)
-- `PATCH /api/orders/status` (admin)
-
-Auth headers supported by middleware:
+Protected endpoints accept either:
 
 - `Authorization: Bearer <token>`
 - `token: <token>`
 
----
+### User endpoints
 
-## 📦 Scripts
+- `POST /api/users/register`
+- `POST /api/users/login`
+- `POST /api/users/admin`
+- `GET /api/users/profile`
+- `PATCH /api/users/profile`
+- `GET /api/users/addresses`
+- `POST /api/users/address`
+- `DELETE /api/users/address/:addressId`
 
-### Storefront (`/frontend`)
+Notes:
 
-- `npm run dev`
-- `npm run build`
-- `npm run preview`
-- `npm run lint`
+- `register` enforces a strong password policy.
+- `register` and `login` are rate limited to 20 requests per 15 minutes per IP.
+- `admin` login is rate limited to 10 requests per 15 minutes per IP.
 
-### Backend (`/Backend`)
+### Product endpoints
 
-- `npm run server` (nodemon)
-- `npm start`
+- `GET /api/products/list`
+- `GET /api/products/categories`
+- `POST /api/products/single`
+- `GET /api/products/:productId`
+- `POST /api/products/add`
+- `PATCH /api/products/update`
+- `POST /api/products/remove`
+- `DELETE /api/products/:productId`
 
-### Admin (`/admin pannel`)
+Product list query params supported by `GET /api/products/list`:
 
-- `npm run dev`
-- `npm run build`
-- `npm run preview`
-- `npm run lint`
+- `page`
+- `limit`
+- `publishedOnly`
+- `categoryKey`
+- `category`
+- `productType`
+- `inStock`
+- `isFeatured`
+- `isBestSeller`
+- `isNewArrival`
+- `isTrending`
+- `search`
+- `sortBy` (`createdAt`, `updatedAt`, `price`, `stock`, `name`, `publishedAt`)
+- `sortOrder` (`asc` or `desc`)
 
-### Monorepo Root (`/`)
+Notes:
 
-- `npm run install:all`
-- `npm run dev:frontend`
-- `npm run dev:backend`
-- `npm run dev:admin`
-- `npm run build:frontend`
-- `npm run build:admin`
+- Product creation and updates accept multipart form-data.
+- Upload field names are `image1`, `image2`, `image3`, and `image4`.
+- Products are soft deleted by setting `isDeleted: true`.
+- `GET /api/products/categories` supports `includeEmpty` and `publishedOnly` query params.
 
----
+### Order endpoints
 
-## 🧪 Notes
+- `POST /api/orders/place`
+- `POST /api/orders/stripe/create-checkout-session`
+- `POST /api/orders/stripe/webhook`
+- `GET /api/orders/my`
+- `GET /api/orders/list`
+- `GET /api/orders/summary`
+- `PATCH /api/orders/status`
 
-- Product images are uploaded as `image1`, `image2`, `image3`, `image4`.
-- Deleted products are soft deleted (`isDeleted: true`).
-- Frontend and admin both use `VITE_API_BASE_URL` for backend connectivity.
+Notes:
 
----
+- `place`, `stripe/create-checkout-session`, and `my` require a logged-in user.
+- `list`, `summary`, and `status` require an admin token.
+- Stripe checkout creates the order first, then updates payment status through the webhook.
+- Supported order statuses: `placed`, `processing`, `shipped`, `delivered`, `cancelled`.
+- Supported payment statuses: `pending`, `paid`, `failed`, `refunded`.
+- Supported payment methods: `cod`, `razorpay`, `upi`, `card`, `netbanking`, `stripe`.
 
-## 🚀 Deploy On Vercel (Step-by-Step)
+## Data Model Highlights
 
-Deploy this monorepo as **3 separate Vercel projects**:
+### Product
 
-### 1. Push code to GitHub
+The product schema already supports more than a basic catalog item:
+
+- category keys and human-readable category labels
+- optional variants
+- pricing, tax, and stock metadata
+- plant-specific details such as sunlight, watering, difficulty, and pet-friendliness
+- care guide fields
+- shipping fields
+- featured, bestseller, new-arrival, and trending flags
+- SEO metadata
+- review aggregates
+
+### Order
+
+Orders store:
+
+- order number
+- normalized item snapshots
+- delivery address
+- customer info
+- payment status and payment method
+- Stripe session and payment intent identifiers
+
+### User
+
+Users store:
+
+- account profile info
+- hashed password
+- address book
+- cart data object
+- role and activity fields
+
+## Local Stripe Testing
+
+If you want to test the webhook locally, run Stripe CLI in a separate terminal:
 
 ```bash
-git add .
-git commit -m "Prepare monorepo for Vercel"
-git push origin <your-branch>
+stripe listen --forward-to localhost:9000/api/orders/stripe/webhook
 ```
 
-### 2. Deploy Backend first
+Make sure the forwarding port matches `PORT` in `Backend/.env`.
 
-1. In Vercel dashboard, click **Add New Project**.
-2. Import your GitHub repo.
-3. Set **Root Directory** to `Backend`.
-4. Build settings can remain default (uses `Backend/vercel.json`).
-5. Add backend Environment Variables:
-   - `MONGODB_URI`
-   - `JWT_SECRET`
-   - `ADMIN_EMAIL`
-   - `ADMIN_PASSWORD`
-   - `CLOUDINARY_CLOUD_NAME`
-   - `CLOUDINARY_API_KEY`
-   - `CLOUDINARY_API_SECRET`
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_WEBHOOK_SECRET`
-   - `FRONTEND_URL` (set after frontend deploy URL is known)
-6. Deploy and copy backend URL (example: `https://naturevibes-backend.vercel.app`).
+## Deployment Notes
 
-### 3. Deploy Storefront
+This repo includes Vercel config files for:
 
-1. Add another new project from the same repo.
-2. Set **Root Directory** to `frontend`.
-3. Add Environment Variable:
-   - `VITE_API_BASE_URL=https://<your-backend-domain>`
-4. Deploy and copy storefront URL.
+- the root storefront deployment
+- `frontend/`
+- `admin pannel/`
+- `Backend/`
 
-### 4. Update Backend `FRONTEND_URL`
+Common deployment pattern:
 
-Go back to backend project settings and set:
+1. Deploy `Backend/` as the API service.
+2. Deploy `frontend/` as the storefront.
+3. Deploy `admin pannel/` as the admin app.
+4. Set `FRONTEND_URL` and `ADMIN_URL` in the backend environment so CORS and Stripe redirects work correctly.
+5. If using Stripe, configure the webhook endpoint as `https://<backend-domain>/api/orders/stripe/webhook`.
 
-`FRONTEND_URL=https://<your-frontend-domain>`
+## Current Gaps
 
-Then redeploy backend.
-
-### 5. Deploy Admin Panel
-
-1. Add third project from same repo.
-2. Set **Root Directory** to `admin pannel`.
-3. Add Environment Variable:
-   - `VITE_API_BASE_URL=https://<your-backend-domain>`
-4. Deploy.
-
-### 6. Configure Stripe webhook (if using Stripe)
-
-In Stripe Dashboard:
-
-1. Create webhook endpoint:
-   - `https://<your-backend-domain>/api/orders/stripe/webhook`
-2. Enable events:
-   - `checkout.session.completed`
-   - `checkout.session.expired`
-   - `checkout.session.async_payment_failed`
-3. Copy webhook signing secret and set it in backend Vercel env:
-   - `STRIPE_WEBHOOK_SECRET`
-4. Redeploy backend.
-
-### 7. Validate after deploy
-
-1. Open storefront and load product list.
-2. Place COD order.
-3. Verify order appears in admin panel.
-4. If Stripe enabled, test payment flow with Stripe test card.
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit changes
-4. Open a pull request
-
----
-
-## 📄 License
-
-License is currently not declared in this repository.  
-Add a `LICENSE` file if you plan to publish it publicly.
-
----
-
-<p align="center">
-  Built with 🌱, React, and clean backend architecture.
-</p>
+- No automated test suite is wired into the root scripts.
+- No `LICENSE` file is declared at the repository root.
+- The admin directory name contains a typo (`admin pannel`), so keep that in mind for tooling and deployment setup.
