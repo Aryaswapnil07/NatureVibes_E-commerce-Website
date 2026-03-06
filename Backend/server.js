@@ -10,13 +10,36 @@ import { handleStripeWebhook } from "./controllers/order.controller.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
+app.disable("x-powered-by");
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.ADMIN_URL,
+  process.env.CLIENT_URL,
+]
+  .join(",")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 connectDB().catch((error) => {
   console.error("Initial database connection failed:", error.message);
 });
 connectCloudinary();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origin not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
 app.use(async (req, res, next) => {
   try {
     await connectDB();
