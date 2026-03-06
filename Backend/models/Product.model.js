@@ -64,7 +64,17 @@ const productSchema = new mongoose.Schema(
       required: true,
     },
 
-    category: String,
+    categoryKey: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      default: "",
+    },
+    category: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     subCategory: String,
     tags: [String],
 
@@ -182,6 +192,7 @@ productSchema.index(
   }
 );
 productSchema.index({ category: 1 });
+productSchema.index({ categoryKey: 1 });
 productSchema.index({ isPublished: 1 });
 
 // ======================
