@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "canvas-confetti": "^1.9.4",
+    "cors": "^2.8.6",
     "framer-motion": "^12.30.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.3",

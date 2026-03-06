@@ -14,5 +14,8 @@
     "build:frontend": "npm --prefix ./frontend run build",
     "build:admin": "npm --prefix \"./admin pannel\" run build",
     "start:backend": "npm --prefix ./Backend run start"
+  },
+  "dependencies": {
+    "cors": "^2.8.6"
   }
 }
