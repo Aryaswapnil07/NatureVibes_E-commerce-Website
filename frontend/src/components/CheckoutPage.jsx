@@ -23,6 +23,62 @@ const paymentOptions = [
   { value: "stripe", label: "Card / UPI via Stripe", icon: FiCreditCard },
 ];
 
+const normalizeText = (value) => String(value || "").trim();
+
+const resolveCartItemProductId = (item = {}) => {
+  const candidateIds = [
+    item.backendId,
+    item.productId,
+    item._id,
+    item.product?._id,
+    item.product?.id,
+    item.id,
+  ];
+
+  for (const candidate of candidateIds) {
+    const normalized = normalizeText(candidate);
+    if (objectIdRegex.test(normalized)) {
+      return normalized;
+    }
+  }
+
+  return "";
+};
+
+const resolveCartItemQuantity = (item = {}) => {
+  const quantity = Number(item.quantity ?? item.qty ?? item.count ?? 1);
+  return Number.isInteger(quantity) && quantity > 0 ? quantity : Number.NaN;
+};
+
+const resolveCartItemPrice = (item = {}) => {
+  const price = Number(item.price ?? item.unitPrice ?? item.discountedPrice ?? 0);
+  return Number.isFinite(price) && price > 0 ? price : Number.NaN;
+};
+
+const buildOrderItem = (item = {}) => {
+  const productId = resolveCartItemProductId(item);
+  const quantity = resolveCartItemQuantity(item);
+  const price = resolveCartItemPrice(item);
+  const name = normalizeText(item.name || item.title || item.product?.name);
+  const image = normalizeText(item.image || item.thumbnail || item.product?.image);
+
+  const hasValidQuantity = Number.isInteger(quantity) && quantity > 0;
+  const hasLegacySnapshot = Boolean(name) && Number.isFinite(price) && hasValidQuantity;
+  const hasCanonicalProductId = Boolean(productId) && hasValidQuantity;
+
+  if (!hasCanonicalProductId && !hasLegacySnapshot) {
+    return null;
+  }
+
+  return {
+    ...(productId ? { productId, backendId: productId, id: productId } : {}),
+    ...(name ? { name } : {}),
+    ...(Number.isFinite(price) ? { price } : {}),
+    ...(image ? { image } : {}),
+    quantity,
+  };
+};
+
 const readApiResponse = async (response) => {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
@@ -74,19 +130,7 @@ const CheckoutPage = ({
   };
 
   const buildOrderPayload = () => ({
-    items: cartItems
-      .map((item) => {
-        const sourceId = item.backendId || item.id;
-        if (!sourceId || !objectIdRegex.test(String(sourceId))) {
-          return null;
-        }
-
-        return {
-          productId: String(sourceId),
-          quantity: Number(item.quantity || 1),
-        };
-      })
-      .filter(Boolean),
+    items: cartItems.map(buildOrderItem).filter(Boolean),
     amount: Number(totalAmount || 0),
     address: {
       fullName: address.fullName,
@@ -115,13 +159,12 @@ const CheckoutPage = ({
       return;
     }
 
-    const hasInvalidItems = cartItems.some((item) => {
-      const sourceId = item.backendId || item.id;
-      return !sourceId || !objectIdRegex.test(String(sourceId));
-    });
+    const hasInvalidItems = cartItems.some((item) => !buildOrderItem(item));
 
     if (hasInvalidItems) {
-      setError("Some cart items are outdated. Please add products again from catalog.");
+      setError(
+        "Some cart items are invalid or outdated. Please remove them and add the products again."
+      );
       return;
     }
 

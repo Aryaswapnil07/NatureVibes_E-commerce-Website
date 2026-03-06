@@ -33,6 +33,11 @@ const isLikelyPublicUrl = (value = "") => /^https?:\/\//i.test(String(value));
 
 const sanitizeText = (value = "") => String(value || "").trim();
 const sanitizeEmail = (value = "") => sanitizeText(value).toLowerCase();
+const normalizeLookupName = (value = "") => sanitizeText(value).toLowerCase();
+const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getProductUnitPrice = (product = {}) =>
+  Number(product.discountedPrice > 0 ? product.discountedPrice : product.price);
 
 const sanitizeAddress = (address = {}, fallbackCustomer = {}) => ({
   fullName: sanitizeText(address.fullName || fallbackCustomer.name),
@@ -57,43 +62,100 @@ const resolveClientBaseUrl = (req) =>
     ""
   );
 
+const resolveRequestedProductId = (item = {}) => {
+  const candidateIds = [
+    item.productId,
+    item.backendId,
+    item.product?._id,
+    item.product?.id,
+    typeof item.product === "string" || typeof item.product === "number"
+      ? item.product
+      : "",
+    item._id,
+    item.id,
+  ];
+
+  for (const candidate of candidateIds) {
+    const normalized = sanitizeText(candidate);
+    if (mongoose.Types.ObjectId.isValid(normalized)) {
+      return normalized;
+    }
+  }
+
+  return "";
+};
+
+const resolveRequestedQuantity = (item = {}) => {
+  const quantity = Number(item.quantity ?? item.qty ?? item.count ?? 1);
+  return Number.isInteger(quantity) && quantity > 0 && quantity <= 20 ? quantity : null;
+};
+
+const resolveRequestedPrice = (item = {}) => {
+  const price = Number(
+    item.price ?? item.unitPrice ?? item.amount ?? item.product?.price ?? Number.NaN
+  );
+  return Number.isFinite(price) && price > 0 ? normalizeAmount(price) : null;
+};
+
+const resolveRequestedName = (item = {}) =>
+  sanitizeText(item.name || item.title || item.productName || item.product?.name);
+
+const resolveRequestedImage = (item = {}) =>
+  sanitizeText(
+    item.image ||
+      item.thumbnail ||
+      item.product?.image ||
+      item.product?.images?.find?.((entry) => entry?.isPrimary)?.url ||
+      item.product?.images?.[0]?.url
+  );
+
 const normalizeOrderItems = (items = []) => {
   if (!Array.isArray(items)) return [];
 
-  return items
-    .map((item) => {
-      const sourceProductId =
-        item.productId || item.backendId || item.product || item.id || "";
-      const productId = String(sourceProductId || "").trim();
-      const quantity = Number(item.quantity || 1);
+  return items.map((item) => {
+    const productId = resolveRequestedProductId(item);
+    const quantity = resolveRequestedQuantity(item);
+    const name = resolveRequestedName(item);
+    const price = resolveRequestedPrice(item);
+    const image = resolveRequestedImage(item);
 
-      if (!mongoose.Types.ObjectId.isValid(productId)) {
-        return null;
-      }
+    const isValid = Boolean(quantity && (productId || (name && price)));
 
-      if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 20) {
-        return null;
-      }
-
-      return {
-        productId,
-        quantity,
-      };
-    })
-    .filter(Boolean);
+    return {
+      productId,
+      quantity,
+      name,
+      price,
+      image,
+      isValid,
+    };
+  });
 };
 
 const buildOrderInput = async (req) => {
-  const requestedItems = normalizeOrderItems(req.body?.items || []);
+  const normalizedRequestedItems = normalizeOrderItems(req.body?.items || []);
 
-  if (!requestedItems.length) {
+  if (!normalizedRequestedItems.length) {
     return {
       error: {
         status: 400,
-        message: "Order items must include valid productId and quantity",
+        message:
+          "Order items must include a valid quantity and either a productId or a valid name/price snapshot.",
       },
     };
   }
+
+  if (normalizedRequestedItems.some((item) => !item.isValid)) {
+    return {
+      error: {
+        status: 400,
+        message:
+          "Each order item must include a valid quantity and either a productId or a valid name/price snapshot.",
+      },
+    };
+  }
+
+  const requestedItems = normalizedRequestedItems.map(({ isValid, ...item }) => item);
 
   const user = await userModel
     .findOne({ _id: req.userId, isActive: true })
@@ -108,25 +170,89 @@ const buildOrderInput = async (req) => {
     };
   }
 
-  const distinctProductIds = [...new Set(requestedItems.map((item) => item.productId))];
-  const products = await Product.find({
-    _id: { $in: distinctProductIds },
-    isDeleted: false,
-    isPublished: true,
-    isActive: true,
-  }).select("_id name images price discountedPrice stock isInStock");
+  const distinctProductIds = [
+    ...new Set(requestedItems.map((item) => item.productId).filter(Boolean)),
+  ];
+  const legacyItemNames = [
+    ...new Set(
+      requestedItems
+        .filter((item) => !item.productId)
+        .map((item) => normalizeLookupName(item.name))
+        .filter(Boolean)
+    ),
+  ];
+
+  const [products, legacyProducts] = await Promise.all([
+    distinctProductIds.length
+      ? Product.find({
+          _id: { $in: distinctProductIds },
+          isDeleted: false,
+          isPublished: true,
+          isActive: true,
+        }).select("_id name images price discountedPrice stock isInStock")
+      : Promise.resolve([]),
+    legacyItemNames.length
+      ? Product.find({
+          isDeleted: false,
+          isPublished: true,
+          isActive: true,
+          $or: legacyItemNames.map((name) => ({
+            name: new RegExp(`^${escapeRegex(name)}$`, "i"),
+          })),
+        }).select("_id name images price discountedPrice stock isInStock")
+      : Promise.resolve([]),
+  ]);
 
   const productMap = new Map(products.map((product) => [String(product._id), product]));
+  const legacyProductMap = new Map();
+
+  for (const product of legacyProducts) {
+    const key = normalizeLookupName(product.name);
+    if (!legacyProductMap.has(key)) {
+      legacyProductMap.set(key, []);
+    }
+    legacyProductMap.get(key).push(product);
+  }
+
+  const resolveLegacyProduct = (item) => {
+    const key = normalizeLookupName(item.name);
+    const candidates = legacyProductMap.get(key) || [];
+
+    if (!candidates.length) {
+      return null;
+    }
+
+    if (candidates.length === 1) {
+      return candidates[0];
+    }
+
+    if (Number.isFinite(item.price) && item.price > 0) {
+      const matchedByPrice = candidates.find(
+        (product) => normalizeAmount(getProductUnitPrice(product)) === normalizeAmount(item.price)
+      );
+
+      if (matchedByPrice) {
+        return matchedByPrice;
+      }
+    }
+
+    return candidates[0];
+  };
 
   const finalItems = [];
 
   for (const item of requestedItems) {
-    const product = productMap.get(item.productId);
+    const product = item.productId
+      ? productMap.get(item.productId)
+      : resolveLegacyProduct(item);
+
     if (!product) {
       return {
         error: {
           status: 400,
-          message: "One or more products are unavailable. Please refresh cart.",
+          message: item.name
+            ? `${item.name} is unavailable. Please remove it and add it again from the catalog.`
+            : "One or more products are unavailable. Please refresh cart.",
         },
       };
     }
@@ -141,9 +267,7 @@ const buildOrderInput = async (req) => {
       };
     }
 
-    const unitPrice = Number(
-      product.discountedPrice > 0 ? product.discountedPrice : product.price
-    );
+    const unitPrice = getProductUnitPrice(product);
 
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
       return {
@@ -159,6 +283,7 @@ const buildOrderInput = async (req) => {
       name: product.name,
       image: product.images?.find((entry) => entry?.isPrimary)?.url ||
         product.images?.[0]?.url ||
+        item.image ||
         "",
       price: unitPrice,
       quantity: item.quantity,
