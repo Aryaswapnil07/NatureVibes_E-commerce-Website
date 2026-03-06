@@ -34,9 +34,25 @@ const LoginModal = ({ isOpen, onClose, onAuthSuccess }) => {
     setError("");
 
     try {
+      if (!isLoginView) {
+        const password = String(form.password || "");
+        const strongPassword =
+          /[A-Z]/.test(password) &&
+          /[a-z]/.test(password) &&
+          /[0-9]/.test(password) &&
+          /[^A-Za-z0-9]/.test(password) &&
+          password.length >= 8;
+
+        if (!strongPassword) {
+          throw new Error(
+            "Password must be at least 8 characters and include uppercase, lowercase, number, and symbol."
+          );
+        }
+      }
+
       const payload = isLoginView
-        ? { email: form.email, password: form.password }
-        : { name: form.name, email: form.email, password: form.password };
+        ? { email: form.email.trim(), password: form.password }
+        : { name: form.name.trim(), email: form.email.trim(), password: form.password };
 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
@@ -99,8 +115,15 @@ const LoginModal = ({ isOpen, onClose, onAuthSuccess }) => {
             placeholder="Password"
             value={form.password}
             onChange={handleChange}
+            minLength={8}
             required
           />
+
+          {!isLoginView ? (
+            <p style={{ marginBottom: "10px", color: "#5b6b5c", fontSize: "12px" }}>
+              Use 8+ characters with uppercase, lowercase, number, and symbol.
+            </p>
+          ) : null}
 
           {error ? (
             <p

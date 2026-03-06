@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Navigate, Routes, Route } from "react-router-dom";
 import "./App.css";
 
-import { categories as staticCategories, furniture as staticFurniture } from "./data";
 import API_BASE_URL from "./config/api";
 
 import Navbar from "./components/Navbar";
@@ -20,13 +19,17 @@ import UserProfile from "./components/UserProfile";
 
 const USER_TOKEN_KEY = "natureVibesUserToken";
 
-const sectionTemplate = {
-  indoor: { title: "Indoor & Hardy", id: "cat-indoor", products: [] },
-  foliage: { title: "Foliage & Vining", id: "cat-foliage", products: [] },
-  outdoor: { title: "Outdoor & Blooms", id: "cat-outdoor", products: [] },
-  seeds: { title: "Seeds & Bulbs", id: "cat-seeds", products: [] },
-  pots: { title: "Pots & Care Tools", id: "cat-pots", products: [] },
-  furniture: { title: "Premium Furniture", id: "furniture", products: [] },
+const normalizeCategoryKey = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const toSectionId = (key = "", label = "") => {
+  const normalizedKey = normalizeCategoryKey(key || label || "catalog");
+  return `cat-${normalizedKey || "catalog"}`;
 };
 
 const normalizeCatalogProduct = (product, fallbackIndex = 0) => {
@@ -43,11 +46,18 @@ const normalizeCatalogProduct = (product, fallbackIndex = 0) => {
   if (product.isNewArrival) badge = "New";
   if (product.isTrending) badge = "Trending";
 
+  const categoryLabel =
+    product.category || product.subCategory || product.productType || "General";
+  const categoryKey = normalizeCategoryKey(
+    product.categoryKey || product.category || product.subCategory || categoryLabel
+  );
+
   return {
     id: String(product._id || product.id || `nv-item-${fallbackIndex}`),
     backendId: product._id || null,
+    categoryKey,
     name: product.name || "Untitled Product",
-    category: product.subCategory || product.category || product.productType || "General",
+    category: categoryLabel,
     baseCategory: product.category || "",
     subCategory: product.subCategory || "",
     productType: product.productType || "",
@@ -77,90 +87,59 @@ const normalizeCatalogProduct = (product, fallbackIndex = 0) => {
   };
 };
 
-const resolveSectionKey = (product) => {
-  const categoryText = `${product.category || ""} ${product.subCategory || ""}`
-    .toLowerCase()
-    .trim();
-  const type = (product.productType || "").toLowerCase();
+const buildCatalogSections = (products = [], categories = []) => {
+  const sectionMap = new Map();
 
-  if (categoryText.includes("furniture") || type === "subscription") {
-    return "furniture";
-  }
+  categories.forEach((category) => {
+    const key = normalizeCategoryKey(category.key || category.label);
+    if (!key) return;
 
-  if (
-    ["seed", "bulb"].includes(type) ||
-    /(seed|seeds|bulb|microgreen|herb|tree|grass|kit)/.test(categoryText)
-  ) {
-    return "seeds";
-  }
-
-  if (
-    ["pot", "planter", "soil", "fertilizer", "tool"].includes(type) ||
-    /(pot|tool|care|soil|fertilizer|planter|stand|tray|basket|printed)/.test(
-      categoryText
-    )
-  ) {
-    return "pots";
-  }
-
-  if (
-    /(outdoor|flower|fruit|bloom|garden)/.test(categoryText) ||
-    type === "bulb"
-  ) {
-    return "outdoor";
-  }
-
-  if (
-    /(foliage|vining|vine|money|pothos|monstera|low light|air purifying|pet-friendly|succulent|hanging|indoor|low maintenance|xl)/.test(
-      categoryText
-    )
-  ) {
-    return "foliage";
-  }
-
-  return "indoor";
-};
-
-const buildSectionsFromStatic = () => {
-  const sections = JSON.parse(JSON.stringify(sectionTemplate));
-
-  Object.entries(staticCategories).forEach(([key, section]) => {
-    sections[key] = {
-      title: section.title?.replace(/[^\x20-\x7E]/g, "").trim() || sections[key].title,
-      id: section.id || sections[key].id,
-      products: (section.products || []).map((item, index) =>
-        normalizeCatalogProduct(item, index)
-      ),
-    };
+    sectionMap.set(key, {
+      key,
+      id: toSectionId(key, category.label),
+      title: category.label || "General",
+      description: category.description || "",
+      order: Number(category.order || 9999),
+      products: [],
+    });
   });
 
-  sections.furniture = {
-    title: staticFurniture.title || sectionTemplate.furniture.title,
-    id: staticFurniture.id || sectionTemplate.furniture.id,
-    products: (staticFurniture.products || []).map((item, index) =>
-      normalizeCatalogProduct(item, index + 1000)
-    ),
-  };
-
-  return sections;
-};
-
-const buildSectionsFromBackend = (products = []) => {
-  const sections = JSON.parse(JSON.stringify(sectionTemplate));
   products.forEach((product, index) => {
     if (product?.isDeleted) return;
     if (product?.isPublished === false) return;
-    const normalized = normalizeCatalogProduct(product, index);
-    const sectionKey = resolveSectionKey(product);
-    sections[sectionKey].products.push(normalized);
+
+    const normalizedProduct = normalizeCatalogProduct(product, index);
+    const key =
+      normalizeCategoryKey(normalizedProduct.categoryKey || normalizedProduct.category) ||
+      `general-${index}`;
+
+    if (!sectionMap.has(key)) {
+      sectionMap.set(key, {
+        key,
+        id: toSectionId(key, normalizedProduct.category),
+        title: normalizedProduct.category || "General",
+        description: "",
+        order: 9999,
+        products: [],
+      });
+    }
+
+    sectionMap.get(key).products.push(normalizedProduct);
   });
-  return sections;
+
+  return Array.from(sectionMap.values())
+    .filter((section) => section.products.length > 0)
+    .sort(
+      (left, right) =>
+        Number(left.order || 0) - Number(right.order || 0) ||
+        String(left.title || "").localeCompare(String(right.title || ""))
+    );
 };
 
 function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [catalogSections, setCatalogSections] = useState(() => buildSectionsFromStatic());
+  const [catalogSections, setCatalogSections] = useState([]);
   const [catalogError, setCatalogError] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [userToken, setUserToken] = useState(
@@ -184,23 +163,31 @@ function App() {
       setCatalogError("");
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/products/list?publishedOnly=true`);
-        const payload = await response.json();
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          fetch(
+            `${API_BASE_URL}/api/products/list?publishedOnly=true&limit=500&sortBy=createdAt&sortOrder=desc`
+          ),
+          fetch(`${API_BASE_URL}/api/products/categories?publishedOnly=true`),
+        ]);
 
-        if (!response.ok || !payload.success) {
-          throw new Error(payload.message || "Unable to load products");
+        const productsPayload = await productsResponse.json();
+
+        if (!productsResponse.ok || !productsPayload.success) {
+          throw new Error(productsPayload.message || "Unable to load products");
         }
 
-        const sections = buildSectionsFromBackend(payload.products || []);
-        const totalProducts = Object.values(sections).reduce(
-          (acc, section) => acc + section.products.length,
-          0
-        );
-
-        if (totalProducts > 0) {
-          setCatalogSections(sections);
+        let categoryMeta = [];
+        if (categoriesResponse.ok) {
+          const categoriesPayload = await categoriesResponse.json();
+          if (categoriesPayload?.success && Array.isArray(categoriesPayload.categories)) {
+            categoryMeta = categoriesPayload.categories;
+          }
         }
+
+        const sections = buildCatalogSections(productsPayload.products || [], categoryMeta);
+        setCatalogSections(sections);
       } catch (error) {
+        setCatalogSections([]);
         setCatalogError(error.message || "Unable to load products from backend");
       } finally {
         setCatalogLoading(false);
@@ -220,7 +207,10 @@ function App() {
     setProfileLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
-        headers: { token: userToken },
+        headers: {
+          token: userToken,
+          Authorization: `Bearer ${userToken}`,
+        },
       });
       const payload = await response.json();
 
@@ -231,6 +221,8 @@ function App() {
       setUserProfile(payload.user || null);
     } catch {
       setUserProfile(null);
+      localStorage.removeItem(USER_TOKEN_KEY);
+      setUserToken("");
     } finally {
       setProfileLoading(false);
     }
@@ -241,7 +233,7 @@ function App() {
   }, [fetchUserProfile]);
 
   const allProducts = useMemo(
-    () => Object.values(catalogSections).flatMap((section) => section.products),
+    () => catalogSections.flatMap((section) => section.products),
     [catalogSections]
   );
 
@@ -301,6 +293,7 @@ function App() {
   const handleLogout = useCallback(() => {
     localStorage.removeItem(USER_TOKEN_KEY);
     setUserToken("");
+    setUserProfile(null);
   }, []);
 
   return (
@@ -311,6 +304,7 @@ function App() {
         isLoggedIn={Boolean(userToken)}
         cartCount={cartCount}
         allProducts={allProducts}
+        catalogSections={catalogSections}
       />
 
       <Routes>
@@ -322,7 +316,7 @@ function App() {
               <section id="full-catalog">
                 <div className="section-header">
                   <h2>Full Plant Catalog</h2>
-                  <p>Every variety we grow, curated for your home.</p>
+                  <p>Shop category-wise plants and accessories curated for every space.</p>
                 </div>
                 {catalogError ? (
                   <div
@@ -336,7 +330,7 @@ function App() {
                       borderRadius: "10px",
                     }}
                   >
-                    Backend connection issue: {catalogError}. Showing available data.
+                    Backend connection issue: {catalogError}
                   </div>
                 ) : null}
                 {catalogLoading ? (
@@ -344,46 +338,30 @@ function App() {
                     Loading products from backend...
                   </p>
                 ) : null}
-                <ProductSection
-                  {...catalogSections.indoor}
-                  onAddToCart={handleAddToCart}
-                />
-                <ProductSection
-                  {...catalogSections.foliage}
-                  onAddToCart={handleAddToCart}
-                />
-                <ProductSection
-                  {...catalogSections.outdoor}
-                  onAddToCart={handleAddToCart}
-                />
-                {catalogSections.seeds.products.length > 0 ? (
-                  <ProductSection
-                    {...catalogSections.seeds}
-                    onAddToCart={handleAddToCart}
-                  />
-                ) : null}
-                <ProductSection {...catalogSections.pots} onAddToCart={handleAddToCart} />
-              </section>
 
-              {catalogSections.furniture.products.length > 0 ? (
-                <section id="furniture" style={{ background: "#f4f8f4" }}>
-                  <div className="section-header">
-                    <h2>Premium Furniture</h2>
-                    <p>Handcrafted Sheesham & Teak wood pieces.</p>
-                  </div>
+                {!catalogLoading && catalogSections.length === 0 ? (
+                  <p style={{ textAlign: "center", color: "#6c757d" }}>
+                    No products are currently available.
+                  </p>
+                ) : null}
+
+                {catalogSections.map((section) => (
                   <ProductSection
-                    {...catalogSections.furniture}
+                    key={section.key}
+                    title={section.title}
+                    id={section.id}
+                    products={section.products}
                     onAddToCart={handleAddToCart}
                   />
-                </section>
-              ) : null}
+                ))}
+              </section>
 
               <section className="about-section" id="about">
                 <div className="about-content">
                   <h2>About NatureVibes</h2>
                   <p>
-                    NatureVibes blends modern furniture with living greenery to bring
-                    harmony, calm, and freshness into your home.
+                    NatureVibes brings curated plants, seeds, and plant-care essentials for
+                    modern homes and gardens.
                   </p>
                 </div>
               </section>
@@ -406,6 +384,7 @@ function App() {
               totalAmount={totalAmount}
               clearCart={clearCart}
               userToken={userToken}
+              onRequireLogin={handleOpenLogin}
             />
           }
         />
@@ -552,6 +531,8 @@ function App() {
         totalAmount={totalAmount}
         onUpdateQty={handleUpdateQty}
         onRemove={handleRemove}
+        isLoggedIn={Boolean(userToken)}
+        onRequireLogin={handleOpenLogin}
       />
 
       <LoginModal

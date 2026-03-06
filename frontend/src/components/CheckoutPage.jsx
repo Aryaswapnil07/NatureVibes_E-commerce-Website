@@ -34,7 +34,13 @@ const readApiResponse = async (response) => {
   return { payload: null, rawText };
 };
 
-const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
+const CheckoutPage = ({
+  cartItems,
+  totalAmount,
+  clearCart,
+  userToken,
+  onRequireLogin,
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [address, setAddress] = useState({
@@ -42,13 +48,15 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
     email: "",
     phone: "",
     pincode: "",
-    city: "Patna",
-    state: "Bihar",
+    city: "",
+    state: "",
     streetAddress: "",
   });
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState("");
+
+  const isAuthenticated = Boolean(userToken);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -66,21 +74,19 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
   };
 
   const buildOrderPayload = () => ({
-    items: cartItems.map((item) => {
-      const normalizedItem = {
-        name: item.name,
-        image: item.image || "",
-        price: Number(item.price || 0),
-        quantity: Number(item.quantity || 1),
-      };
+    items: cartItems
+      .map((item) => {
+        const sourceId = item.backendId || item.id;
+        if (!sourceId || !objectIdRegex.test(String(sourceId))) {
+          return null;
+        }
 
-      const sourceId = item.backendId || item.id;
-      if (sourceId && objectIdRegex.test(String(sourceId))) {
-        normalizedItem.productId = String(sourceId);
-      }
-
-      return normalizedItem;
-    }),
+        return {
+          productId: String(sourceId),
+          quantity: Number(item.quantity || 1),
+        };
+      })
+      .filter(Boolean),
     amount: Number(totalAmount || 0),
     address: {
       fullName: address.fullName,
@@ -90,14 +96,15 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
       state: address.state,
       pincode: address.pincode,
     },
-    customer: {
-      name: address.fullName,
-      email: address.email,
-      phone: address.phone,
-    },
   });
 
   const handlePlaceOrder = async () => {
+    if (!isAuthenticated) {
+      setError("Please login to place your order.");
+      onRequireLogin?.();
+      return;
+    }
+
     if (!address.fullName || !address.phone || !address.streetAddress || !address.email) {
       setError("Please fill all required delivery details.");
       return;
@@ -108,21 +115,33 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
       return;
     }
 
+    const hasInvalidItems = cartItems.some((item) => {
+      const sourceId = item.backendId || item.id;
+      return !sourceId || !objectIdRegex.test(String(sourceId));
+    });
+
+    if (hasInvalidItems) {
+      setError("Some cart items are outdated. Please add products again from catalog.");
+      return;
+    }
+
     setError("");
     setIsPlacing(true);
 
     try {
       const payload = buildOrderPayload();
+      const headers = {
+        "Content-Type": "application/json",
+        token: userToken,
+        Authorization: `Bearer ${userToken}`,
+      };
 
       if (paymentMethod === "stripe") {
         const response = await fetch(
           `${API_BASE_URL}/api/orders/stripe/create-checkout-session`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(userToken ? { token: userToken } : {}),
-            },
+            headers,
             body: JSON.stringify(payload),
           }
         );
@@ -133,6 +152,10 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
             throw new Error(
               "Stripe API route not found. Restart backend and verify /api/orders/stripe/create-checkout-session is available."
             );
+          }
+
+          if (response.status === 401) {
+            onRequireLogin?.();
           }
 
           throw new Error(data?.message || "Unable to start Stripe checkout");
@@ -148,10 +171,7 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
 
       const response = await fetch(`${API_BASE_URL}/api/orders/place`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(userToken ? { token: userToken } : {}),
-        },
+        headers,
         body: JSON.stringify({
           ...payload,
           paymentMethod: "cod",
@@ -161,6 +181,9 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
       const { payload: data } = await readApiResponse(response);
 
       if (!response.ok || !data?.success) {
+        if (response.status === 401) {
+          onRequireLogin?.();
+        }
         throw new Error(data?.message || "Unable to place order");
       }
 
@@ -181,6 +204,22 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
             <FiTruck size={28} className="icon-green" /> Delivery Details
           </h2>
           <p className="checkout-subtitle">Where should we send your new plants?</p>
+
+          {!isAuthenticated ? (
+            <p
+              style={{
+                marginBottom: "12px",
+                color: "#7a2e00",
+                background: "#fff4e5",
+                border: "1px solid #ffd8a8",
+                borderRadius: "8px",
+                padding: "10px 12px",
+                fontSize: "14px",
+              }}
+            >
+              You must be logged in to place an order.
+            </p>
+          ) : null}
 
           <div className="address-input-grid">
             <div className="input-group full-width">
@@ -352,12 +391,18 @@ const CheckoutPage = ({ cartItems, totalAmount, clearCart, userToken }) => {
             </p>
           ) : null}
 
-          <button className="confirm-pay-btn" onClick={handlePlaceOrder} disabled={isPlacing}>
+          <button
+            className="confirm-pay-btn"
+            onClick={handlePlaceOrder}
+            disabled={isPlacing || !isAuthenticated}
+          >
             <FiCreditCard size={20} className="btn-icon" />{" "}
             {isPlacing
               ? paymentMethod === "stripe"
                 ? "Redirecting to Stripe..."
                 : "Placing Order..."
+              : !isAuthenticated
+              ? "Login Required to Place Order"
               : paymentMethod === "stripe"
               ? "Pay Securely with Stripe"
               : "Place Order (COD)"}
