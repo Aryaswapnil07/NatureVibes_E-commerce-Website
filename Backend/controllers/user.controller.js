@@ -1,121 +1,209 @@
-import validator from "validator";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import validator from "validator";
 import userModel from "../models/User.model.js";
 
 const getEnvValue = (value) => (value || "").replace(/"/g, "").trim();
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
-// CREATING TOKEN
+const USER_PROJECTION = "_id name email phone role createdAt updatedAt";
 
-const createToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET);
+const createToken = ({ id, role = "customer" }) => {
+  return jwt.sign(
+    {
+      id,
+      role,
+      type: "user",
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: JWT_EXPIRES_IN,
+      issuer: "naturevibes-api",
+      audience: "naturevibes-client",
+    }
+  );
 };
 
-//  ROUTE FOR USER LOGIN
+const createAdminToken = ({ email }) => {
+  return jwt.sign(
+    {
+      email,
+      role: "admin",
+      isAdmin: true,
+      type: "admin",
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || "12h",
+      issuer: "naturevibes-api",
+      audience: "naturevibes-admin",
+    }
+  );
+};
+
+const normalizeEmail = (email = "") => {
+  const trimmed = String(email || "").trim();
+  if (!trimmed) return "";
+  return validator.normalizeEmail(trimmed, { all_lowercase: true }) || "";
+};
+
+const formatPhone = (phone = "") => String(phone || "").trim();
+
+const safeEqual = (left = "", right = "") => {
+  const leftBuffer = Buffer.from(String(left));
+  const rightBuffer = Buffer.from(String(right));
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+};
+
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || "");
 
-    const user = await userModel.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    const user = await userModel
+      .findOne({ email, isActive: true })
+      .select("+password _id name email role");
+
+    const invalidCredentialsMessage = "Invalid email or password";
 
     if (!user) {
-      return res.json({
+      return res.status(401).json({
         success: false,
-        message: "User does not exist",
+        message: invalidCredentialsMessage,
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (isMatch) {
-      const token = createToken(user._id);
-      return res.json({
-        success: true,
-        token,
-      });
-    } else {
-      return res.json({
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: invalidCredentialsMessage,
       });
     }
-  } catch (error) {
-    console.log(error);
+
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    const token = createToken({ id: user._id, role: user.role });
+
     return res.json({
+      success: true,
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || "Unable to login",
     });
   }
 };
-//  Route for user register
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const name = String(req.body?.name || "").trim();
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || "");
 
     if (!name || !email || !password) {
-      return res.json({
+      return res.status(400).json({
         success: false,
         message: "Please provide name, email and password",
       });
     }
 
-    //  CHECKING IF THE USER IS ALREADY LOGIN OR NOT
-
-    const exists = await userModel.findOne({ email });
-
-    if (exists) {
-      return res.json({ success: false, message: "User already exist " });
+    if (name.length < 2 || name.length > 80) {
+      return res.status(400).json({
+        success: false,
+        message: "Name must be between 2 and 80 characters",
+      });
     }
-    //  VALIDATING EMAIL FORMAT AND STRONG PASSWORD
 
     if (!validator.isEmail(email)) {
-      return res.json({
+      return res.status(400).json({
         success: false,
-        message: "Please enter a valid email  ",
+        message: "Please enter a valid email",
       });
     }
 
-    if (password.length < 8) {
-      return res.json({
+    const strongPassword = validator.isStrongPassword(password, {
+      minLength: 8,
+      minLowercase: 1,
+      minUppercase: 1,
+      minNumbers: 1,
+      minSymbols: 1,
+    });
+
+    if (!strongPassword) {
+      return res.status(400).json({
         success: false,
-        message: "Please enter a strong password ",
+        message:
+          "Password must be at least 8 characters and include uppercase, lowercase, number, and symbol",
       });
     }
 
-    //  HASHING USER PASSWORD
+    const existingUser = await userModel.findOne({ email }).select("_id");
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "An account with this email already exists",
+      });
+    }
 
-    const salt = await bcrypt.genSalt(10); // HERE 10 is for the more numeric value it takes more time to encrypt
-    //  for hashing password we do
+    const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const newUser = new userModel({
+    const user = await userModel.create({
       name,
       email,
       password: hashedPassword,
+      passwordChangedAt: new Date(),
+      role: "customer",
     });
 
-    //  for saving user to our database
+    const token = createToken({ id: user._id, role: user.role });
 
-    const user = await newUser.save();
-
-    // storing token for user with the help of jwt
-
-    const token = createToken(user._id); //auto generated by mongodb
-
-    res.json({ success: true, token });
+    return res.status(201).json({
+      success: true,
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {
-    console.error("Register api Issue ", error);
-    res.json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to register user",
+    });
   }
 };
 
-//  ROUTES FOR ADMIN LOGIN
-
-const adminLogin = async (req , res) => {
+const adminLogin = async (req, res) => {
   try {
-    const {email , password } = req.body;
-    const adminEmail = getEnvValue(process.env.ADMIN_EMAIL);
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || "");
+    const adminEmail = normalizeEmail(getEnvValue(process.env.ADMIN_EMAIL));
     const adminPassword = getEnvValue(process.env.ADMIN_PASSWORD);
 
     if (!email || !password) {
@@ -125,30 +213,35 @@ const adminLogin = async (req , res) => {
       });
     }
 
-    if(email === adminEmail && password === adminPassword) {
-      const token = jwt.sign(
-        { email, isAdmin: true },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
-      );
-      res.json({
-        success:true , token
-      })
-    } else{
-      res.status(401).json({success:false , message:"Invalid Admin Credentials"})
+    const isEmailValid = safeEqual(email, adminEmail);
+    const isPasswordValid = safeEqual(password, adminPassword);
 
+    if (!isEmailValid || !isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid admin credentials",
+      });
     }
-  } catch(error){
-    console.error("Admin Login Issue ", error);
-    res.status(500).json({success:false , message:error.message})
+
+    const token = createAdminToken({ email });
+
+    return res.json({
+      success: true,
+      token,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to login as admin",
+    });
   }
 };
 
 const getUserProfile = async (req, res) => {
   try {
-    const user = await userModel
-      .findById(req.userId)
-      .select("_id name email phone role createdAt updatedAt");
+    const user = await userModel.findOne({ _id: req.userId, isActive: true }).select(
+      USER_PROJECTION
+    );
 
     if (!user) {
       return res.status(404).json({
@@ -171,7 +264,8 @@ const getUserProfile = async (req, res) => {
 
 const updateUserProfile = async (req, res) => {
   try {
-    const { name, phone } = req.body;
+    const name = String(req.body?.name || "").trim();
+    const phone = formatPhone(req.body?.phone);
 
     if (!name) {
       return res.status(400).json({
@@ -180,16 +274,30 @@ const updateUserProfile = async (req, res) => {
       });
     }
 
+    if (name.length < 2 || name.length > 80) {
+      return res.status(400).json({
+        success: false,
+        message: "Name must be between 2 and 80 characters",
+      });
+    }
+
+    if (phone && !validator.isMobilePhone(phone, "any", { strictMode: false })) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid phone number",
+      });
+    }
+
     const updatedUser = await userModel
-      .findByIdAndUpdate(
-        req.userId,
+      .findOneAndUpdate(
+        { _id: req.userId, isActive: true },
         {
-          name: String(name).trim(),
-          phone: String(phone || "").trim(),
+          name,
+          phone,
         },
         { new: true }
       )
-      .select("_id name email phone role createdAt updatedAt");
+      .select(USER_PROJECTION);
 
     if (!updatedUser) {
       return res.status(404).json({
@@ -213,7 +321,10 @@ const updateUserProfile = async (req, res) => {
 
 const getUserAddresses = async (req, res) => {
   try {
-    const user = await userModel.findById(req.userId).select("addresses");
+    const user = await userModel
+      .findOne({ _id: req.userId, isActive: true })
+      .select("addresses");
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -247,55 +358,84 @@ const saveUserAddress = async (req, res) => {
       isDefault,
     } = req.body;
 
-    if (!fullName || !phone || !streetAddress) {
+    const normalizedFullName = String(fullName || "").trim();
+    const normalizedPhone = formatPhone(phone);
+    const normalizedStreetAddress = String(streetAddress || "").trim();
+
+    if (!normalizedFullName || !normalizedPhone || !normalizedStreetAddress) {
       return res.status(400).json({
         success: false,
         message: "fullName, phone and streetAddress are required",
       });
     }
 
-    const user = await userModel.findById(req.userId);
+    if (!validator.isMobilePhone(normalizedPhone, "any", { strictMode: false })) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid phone number",
+      });
+    }
+
+    const normalizedPincode = String(pincode || "").trim();
+    if (normalizedPincode && !/^[a-zA-Z0-9\-\s]{4,10}$/.test(normalizedPincode)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid pincode",
+      });
+    }
+
+    const user = await userModel.findOne({ _id: req.userId, isActive: true });
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
+    if (!addressId && user.addresses.length >= 20) {
+      return res.status(400).json({
+        success: false,
+        message: "Maximum 20 addresses are allowed per user",
+      });
+    }
+
     const nextAddress = {
-      label: String(label || "Home").trim(),
-      fullName: String(fullName).trim(),
-      phone: String(phone).trim(),
-      streetAddress: String(streetAddress).trim(),
+      label: String(label || "Home").trim().slice(0, 30),
+      fullName: normalizedFullName,
+      phone: normalizedPhone,
+      streetAddress: normalizedStreetAddress,
       city: String(city || "").trim(),
       state: String(state || "").trim(),
-      pincode: String(pincode || "").trim(),
+      pincode: normalizedPincode,
       isDefault: isDefault === true || isDefault === "true",
     };
 
     let targetAddressId = addressId;
 
     if (addressId) {
-      const address = user.addresses.id(addressId);
-      if (!address) {
+      const existingAddress = user.addresses.id(addressId);
+      if (!existingAddress) {
         return res.status(404).json({
           success: false,
           message: "Address not found",
         });
       }
 
-      Object.assign(address, nextAddress);
+      Object.assign(existingAddress, nextAddress);
     } else {
       user.addresses.push(nextAddress);
       targetAddressId = user.addresses[user.addresses.length - 1]?._id;
     }
 
     if (nextAddress.isDefault) {
-      user.addresses.forEach((address) => {
-        address.isDefault = String(address._id) === String(targetAddressId);
+      user.addresses.forEach((entry) => {
+        entry.isDefault = String(entry._id) === String(targetAddressId);
       });
     } else if (user.addresses.length === 1) {
       user.addresses[0].isDefault = true;
     }
 
-    if (user.addresses.length > 0 && !user.addresses.some((address) => address.isDefault)) {
+    if (
+      user.addresses.length > 0 &&
+      !user.addresses.some((entry) => entry.isDefault)
+    ) {
       user.addresses[0].isDefault = true;
     }
 
@@ -316,7 +456,7 @@ const saveUserAddress = async (req, res) => {
 
 const deleteUserAddress = async (req, res) => {
   try {
-    const { addressId } = req.params;
+    const addressId = String(req.params?.addressId || "").trim();
 
     if (!addressId) {
       return res.status(400).json({
@@ -325,20 +465,23 @@ const deleteUserAddress = async (req, res) => {
       });
     }
 
-    const user = await userModel.findById(req.userId);
+    const user = await userModel.findOne({ _id: req.userId, isActive: true });
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const toDelete = user.addresses.id(addressId);
-    if (!toDelete) {
-      return res.status(404).json({ success: false, message: "Address not found" });
+    const existingAddress = user.addresses.id(addressId);
+    if (!existingAddress) {
+      return res.status(404).json({
+        success: false,
+        message: "Address not found",
+      });
     }
 
-    const deletedWasDefault = Boolean(toDelete.isDefault);
-    toDelete.deleteOne();
+    const wasDefault = Boolean(existingAddress.isDefault);
+    existingAddress.deleteOne();
 
-    if (deletedWasDefault && user.addresses.length > 0) {
+    if (wasDefault && user.addresses.length > 0) {
       user.addresses[0].isDefault = true;
     }
 
@@ -358,12 +501,12 @@ const deleteUserAddress = async (req, res) => {
 };
 
 export {
+  adminLogin,
+  deleteUserAddress,
+  getUserAddresses,
+  getUserProfile,
   loginUser,
   registerUser,
-  adminLogin,
-  getUserProfile,
-  updateUserProfile,
-  getUserAddresses,
   saveUserAddress,
-  deleteUserAddress,
+  updateUserProfile,
 };

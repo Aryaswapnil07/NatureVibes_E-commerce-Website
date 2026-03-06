@@ -1,6 +1,18 @@
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 
 const getEnvValue = (value) => (value || "").replace(/"/g, "").trim();
+
+const safeEqual = (left = "", right = "") => {
+  const leftBuffer = Buffer.from(String(left));
+  const rightBuffer = Buffer.from(String(right));
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+};
 
 const adminAuth = (req, res, next) => {
   try {
@@ -17,17 +29,20 @@ const adminAuth = (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const adminEmail = getEnvValue(process.env.ADMIN_EMAIL);
-    const adminPassword = getEnvValue(process.env.ADMIN_PASSWORD);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      issuer: "naturevibes-api",
+      audience: "naturevibes-admin",
+    });
 
-    const isLegacyTokenValid = decoded === `${adminEmail}${adminPassword}`;
-    const isObjectTokenValid =
+    const adminEmail = getEnvValue(process.env.ADMIN_EMAIL).toLowerCase();
+
+    const isAdminTokenValid =
       typeof decoded === "object" &&
-      decoded.email === adminEmail &&
-      decoded.isAdmin === true;
+      decoded?.type === "admin" &&
+      decoded?.isAdmin === true &&
+      safeEqual(String(decoded?.email || "").toLowerCase(), adminEmail);
 
-    if (!isLegacyTokenValid && !isObjectTokenValid) {
+    if (!isAdminTokenValid) {
       return res.status(401).json({
         success: false,
         message: "Not authorized. Please login again.",
@@ -35,10 +50,12 @@ const adminAuth = (req, res, next) => {
     }
 
     req.admin = { email: adminEmail };
-    next();
+    return next();
   } catch (error) {
-    console.error("Admin auth error:", error);
-    return res.status(401).json({ success: false, message: error.message });
+    return res.status(401).json({
+      success: false,
+      message: error.message || "Authentication failed",
+    });
   }
 };
 
