@@ -25,51 +25,31 @@ const ALLOWED_PAYMENT_METHODS = [
   "stripe",
 ];
 
-const sanitizeAddress = (address = {}, customer = {}) => ({
-  fullName: (address.fullName || customer.name || "").trim(),
-  phone: (address.phone || customer.phone || "").trim(),
-  streetAddress: (address.streetAddress || "").trim(),
-  city: (address.city || "").trim(),
-  state: (address.state || "").trim(),
-  pincode: (address.pincode || "").trim(),
-});
-
-const normalizeItems = (items = []) =>
-  items
-    .map((item) => {
-      const normalized = {
-        name: (item.name || "").trim(),
-        image: item.image || "",
-        price: Number(item.price),
-        quantity: Number(item.quantity || 1),
-      };
-
-      if (item.productId && mongoose.Types.ObjectId.isValid(item.productId)) {
-        normalized.product = item.productId;
-      }
-
-      return normalized;
-    })
-    .filter(
-      (item) =>
-        item.name &&
-        Number.isFinite(item.price) &&
-        item.price > 0 &&
-        Number.isInteger(item.quantity) &&
-        item.quantity > 0
-    );
-
 const CURRENT_ORDER_STATUSES = ["placed", "processing", "shipped"];
 const HISTORY_ORDER_STATUSES = ["delivered", "cancelled"];
 
 const normalizeAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
-
-const computeItemsTotal = (items = []) =>
-  normalizeAmount(
-    items.reduce((total, item) => total + Number(item.price) * Number(item.quantity), 0)
-  );
-
 const isLikelyPublicUrl = (value = "") => /^https?:\/\//i.test(String(value));
+
+const sanitizeText = (value = "") => String(value || "").trim();
+const sanitizeEmail = (value = "") => sanitizeText(value).toLowerCase();
+
+const sanitizeAddress = (address = {}, fallbackCustomer = {}) => ({
+  fullName: sanitizeText(address.fullName || fallbackCustomer.name),
+  phone: sanitizeText(address.phone || fallbackCustomer.phone),
+  streetAddress: sanitizeText(address.streetAddress),
+  city: sanitizeText(address.city),
+  state: sanitizeText(address.state),
+  pincode: sanitizeText(address.pincode),
+});
+
+const getSelectedAddress = ({ requestedAddress, selectedAddress }) => {
+  if (selectedAddress) {
+    return sanitizeAddress(selectedAddress);
+  }
+
+  return sanitizeAddress(requestedAddress);
+};
 
 const resolveClientBaseUrl = (req) =>
   (process.env.FRONTEND_URL || req.headers.origin || "http://localhost:5173").replace(
@@ -77,20 +57,121 @@ const resolveClientBaseUrl = (req) =>
     ""
   );
 
-const buildOrderInput = async (req) => {
-  const { items = [], amount, address = {}, customer = {} } = req.body;
-  const normalizedItems = normalizeItems(items);
+const normalizeOrderItems = (items = []) => {
+  if (!Array.isArray(items)) return [];
 
-  if (!normalizedItems.length) {
+  return items
+    .map((item) => {
+      const sourceProductId =
+        item.productId || item.backendId || item.product || item.id || "";
+      const productId = String(sourceProductId || "").trim();
+      const quantity = Number(item.quantity || 1);
+
+      if (!mongoose.Types.ObjectId.isValid(productId)) {
+        return null;
+      }
+
+      if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 20) {
+        return null;
+      }
+
+      return {
+        productId,
+        quantity,
+      };
+    })
+    .filter(Boolean);
+};
+
+const buildOrderInput = async (req) => {
+  const requestedItems = normalizeOrderItems(req.body?.items || []);
+
+  if (!requestedItems.length) {
     return {
       error: {
         status: 400,
-        message: "Order items are required with valid name, price, and quantity",
+        message: "Order items must include valid productId and quantity",
       },
     };
   }
 
-  const calculatedAmount = computeItemsTotal(normalizedItems);
+  const user = await userModel
+    .findOne({ _id: req.userId, isActive: true })
+    .select("_id name email phone addresses");
+
+  if (!user) {
+    return {
+      error: {
+        status: 401,
+        message: "User not found. Please login again.",
+      },
+    };
+  }
+
+  const distinctProductIds = [...new Set(requestedItems.map((item) => item.productId))];
+  const products = await Product.find({
+    _id: { $in: distinctProductIds },
+    isDeleted: false,
+    isPublished: true,
+    isActive: true,
+  }).select("_id name images price discountedPrice stock isInStock");
+
+  const productMap = new Map(products.map((product) => [String(product._id), product]));
+
+  const finalItems = [];
+
+  for (const item of requestedItems) {
+    const product = productMap.get(item.productId);
+    if (!product) {
+      return {
+        error: {
+          status: 400,
+          message: "One or more products are unavailable. Please refresh cart.",
+        },
+      };
+    }
+
+    const availableStock = Number(product.stock || 0);
+    if (!product.isInStock || availableStock < item.quantity) {
+      return {
+        error: {
+          status: 400,
+          message: `${product.name} is out of stock or has insufficient quantity`,
+        },
+      };
+    }
+
+    const unitPrice = Number(
+      product.discountedPrice > 0 ? product.discountedPrice : product.price
+    );
+
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      return {
+        error: {
+          status: 400,
+          message: `Invalid price configuration for ${product.name}`,
+        },
+      };
+    }
+
+    finalItems.push({
+      product: product._id,
+      name: product.name,
+      image: product.images?.find((entry) => entry?.isPrimary)?.url ||
+        product.images?.[0]?.url ||
+        "",
+      price: unitPrice,
+      quantity: item.quantity,
+    });
+  }
+
+  const calculatedAmount = normalizeAmount(
+    finalItems.reduce(
+      (total, item) => total + Number(item.price) * Number(item.quantity),
+      0
+    )
+  );
+
   if (!Number.isFinite(calculatedAmount) || calculatedAmount <= 0) {
     return {
       error: {
@@ -100,7 +181,7 @@ const buildOrderInput = async (req) => {
     };
   }
 
-  const clientAmount = Number(amount);
+  const clientAmount = Number(req.body?.amount);
   if (Number.isFinite(clientAmount)) {
     const delta = Math.abs(normalizeAmount(clientAmount) - calculatedAmount);
     if (delta > 1) {
@@ -113,7 +194,14 @@ const buildOrderInput = async (req) => {
     }
   }
 
-  const finalAddress = sanitizeAddress(address, customer);
+  const requestedAddress = req.body?.address || {};
+  const requestedAddressId = String(req.body?.addressId || "").trim();
+  const selectedAddress = requestedAddressId ? user.addresses?.id(requestedAddressId) : null;
+  const finalAddress = getSelectedAddress({
+    requestedAddress,
+    selectedAddress,
+  });
+
   if (!finalAddress.fullName || !finalAddress.phone || !finalAddress.streetAddress) {
     return {
       error: {
@@ -123,25 +211,16 @@ const buildOrderInput = async (req) => {
     };
   }
 
-  let linkedUser = null;
-  if (req.userId && mongoose.Types.ObjectId.isValid(req.userId)) {
-    linkedUser = await userModel.findById(req.userId).select("_id name email");
-  }
-
-  const customerName = (customer.name || linkedUser?.name || finalAddress.fullName).trim();
-  const customerEmail = (customer.email || linkedUser?.email || "").trim().toLowerCase();
-  const customerPhone = (customer.phone || finalAddress.phone).trim();
-
   return {
     data: {
-      items: normalizedItems,
+      items: finalItems,
       amount: calculatedAmount,
-      user: linkedUser?._id,
+      user: user._id,
       address: finalAddress,
       customer: {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
+        name: sanitizeText(user.name || finalAddress.fullName),
+        email: sanitizeEmail(user.email),
+        phone: sanitizeText(user.phone || finalAddress.phone),
       },
     },
   };
@@ -149,7 +228,8 @@ const buildOrderInput = async (req) => {
 
 const placeOrder = async (req, res) => {
   try {
-    const { paymentMethod = "cod", paymentStatus = "pending" } = req.body;
+    const paymentMethod = req.body?.paymentMethod || "cod";
+    const paymentStatus = req.body?.paymentStatus || "pending";
 
     if (!ALLOWED_PAYMENT_METHODS.includes(paymentMethod)) {
       return res.status(400).json({
@@ -185,7 +265,6 @@ const placeOrder = async (req, res) => {
       order,
     });
   } catch (error) {
-    console.error("Place order error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Unable to place order",
@@ -264,7 +343,6 @@ const createStripeCheckoutSession = async (req, res) => {
       orderNumber: order.orderNumber,
     });
   } catch (error) {
-    console.error("Create Stripe session error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Unable to create Stripe checkout session",
@@ -291,7 +369,6 @@ const handleStripeWebhook = async (req, res) => {
   try {
     event = stripeClient.webhooks.constructEvent(req.body, signature, webhookSecret);
   } catch (error) {
-    console.error("Stripe webhook signature error:", error.message);
     return res.status(400).send(`Webhook Error: ${error.message}`);
   }
 
@@ -346,25 +423,19 @@ const handleStripeWebhook = async (req, res) => {
     }
 
     return res.json({ received: true });
-  } catch (error) {
-    console.error("Stripe webhook handling error:", error);
+  } catch {
     return res.status(500).send("Webhook handling failed");
   }
 };
 
 const getUserOrders = async (req, res) => {
   try {
-    const user = await userModel.findById(req.userId).select("_id email");
+    const user = await userModel.findOne({ _id: req.userId, isActive: true }).select("_id");
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const query = [{ user: user._id }];
-    if (user.email) {
-      query.push({ "customer.email": user.email.toLowerCase() });
-    }
-
-    const orders = await Order.find({ $or: query }).sort({ createdAt: -1 });
+    const orders = await Order.find({ user: user._id }).sort({ createdAt: -1 });
 
     const currentOrders = orders.filter((order) =>
       CURRENT_ORDER_STATUSES.includes(order.status)
@@ -381,7 +452,6 @@ const getUserOrders = async (req, res) => {
       orders,
     });
   } catch (error) {
-    console.error("Get user orders error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Unable to load user orders",
@@ -406,7 +476,6 @@ const listOrders = async (req, res) => {
       orders,
     });
   } catch (error) {
-    console.error("List orders error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Unable to fetch orders",
@@ -467,7 +536,6 @@ const updateOrderStatus = async (req, res) => {
       order,
     });
   } catch (error) {
-    console.error("Update order status error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Unable to update order status",
@@ -500,7 +568,7 @@ const getOrderSummary = async (req, res) => {
         { $group: { _id: null, totalRevenue: { $sum: "$amount" } } },
       ]),
       Product.countDocuments({ isDeleted: false }),
-      userModel.countDocuments({}),
+      userModel.countDocuments({ isActive: true }),
       Order.find({})
         .sort({ createdAt: -1 })
         .limit(6)
@@ -525,7 +593,6 @@ const getOrderSummary = async (req, res) => {
       recentOrders,
     });
   } catch (error) {
-    console.error("Order summary error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Unable to load order summary",
