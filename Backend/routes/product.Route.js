@@ -1,6 +1,7 @@
 import express from "express";
 import {
   addProduct,
+  listCatalogCategories,
   listProduct,
   removeProduct,
   singleProduct,
@@ -23,8 +24,11 @@ productRouter.post(
 );
 
 productRouter.get("/list", listProduct);
+productRouter.get("/categories", listCatalogCategories);
 productRouter.post("/single", singleProduct);
+productRouter.get("/:productId", singleProduct);
 productRouter.post("/remove", adminAuth, removeProduct);
+productRouter.delete("/:productId", adminAuth, removeProduct);
 productRouter.patch(
   "/update",
   adminAuth,

@@ -1,6 +1,5 @@
 import express from "express";
 import adminAuth from "../middleware/adminAuth.js";
-import optionalUserAuth from "../middleware/optionalUserAuth.js";
 import userAuth from "../middleware/userAuth.js";
 import {
   createStripeCheckoutSession,
@@ -13,10 +12,10 @@ import {
 
 const orderRouter = express.Router();
 
-orderRouter.post("/place", optionalUserAuth, placeOrder);
+orderRouter.post("/place", userAuth, placeOrder);
 orderRouter.post(
   "/stripe/create-checkout-session",
-  optionalUserAuth,
+  userAuth,
   createStripeCheckoutSession
 );
 orderRouter.get("/list", adminAuth, listOrders);
