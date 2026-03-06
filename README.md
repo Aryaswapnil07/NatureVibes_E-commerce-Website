@@ -1,85 +1,115 @@
-# NatureVibes
+<div align="center">
+  <img src="./docs/naturevibes-logo.svg" alt="NatureVibes logo" width="860" />
+  <h1>NatureVibes</h1>
+  <p><strong>Professional plant commerce platform</strong> built as a full-stack monorepo with a customer storefront, admin workspace, and production-style REST API.</p>
+  <p>
+    <a href="#overview">Overview</a> •
+    <a href="#stack">Stack</a> •
+    <a href="#workspace">Workspace</a> •
+    <a href="#quick-start">Quick Start</a> •
+    <a href="#api-snapshot">API</a> •
+    <a href="#deployment">Deployment</a>
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=061A22" alt="React 19 badge" />
+    <img src="https://img.shields.io/badge/Vite-7-8B5CF6?style=for-the-badge&logo=vite&logoColor=white" alt="Vite 7 badge" />
+    <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4 badge" />
+    <img src="https://img.shields.io/badge/Node.js-Express_5-1B4332?style=for-the-badge&logo=nodedotjs&logoColor=7DDC84" alt="Node and Express badge" />
+    <img src="https://img.shields.io/badge/MongoDB-Mongoose-0F766E?style=for-the-badge&logo=mongodb&logoColor=8EE788" alt="MongoDB badge" />
+    <img src="https://img.shields.io/badge/Stripe-Checkout-635BFF?style=for-the-badge&logo=stripe&logoColor=white" alt="Stripe badge" />
+  </p>
+</div>
 
-Full-stack plant ecommerce monorepo with:
+## Overview
 
-- `frontend/`: customer storefront built with React and Vite
-- `Backend/`: Express API with MongoDB, Cloudinary, JWT auth, and Stripe support
-- `admin pannel/`: admin dashboard built with React and Vite
+NatureVibes is a plant-focused ecommerce system split into three clear surfaces:
 
-The current codebase supports product catalog browsing, customer accounts, address management, order placement, Stripe checkout, and admin product/order management.
+- `frontend/` for the customer shopping experience
+- `Backend/` for authentication, catalog, addresses, orders, and Stripe flows
+- `admin pannel/` for internal product and order operations
 
-## Repository Layout
+The README has been rebuilt as a cleaner project page with a custom brand mark, framework logo badges, and a tighter presentation. GitHub does not load live Font Awesome webfonts in README rendering, so the visual layer uses SVG artwork plus framework badges for predictable output.
+
+## Stack
+
+| Layer | Tools in use |
+| --- | --- |
+| Customer app | React 19, React Router 7, Vite 7, Tailwind CSS 4, Framer Motion |
+| Admin app | React 19, React Router 7, Vite 7, Tailwind CSS 4 |
+| API | Node.js, Express 5, MongoDB, Mongoose |
+| Auth and security | JWT, bcryptjs, in-memory request rate limiting |
+| Media and payments | Multer, Cloudinary, Stripe Checkout |
+
+### Framework Logos
+
+<p>
+  <img src="https://img.shields.io/badge/React-UI-61DAFB?style=flat-square&logo=react&logoColor=061A22" alt="React badge" />
+  <img src="https://img.shields.io/badge/Vite-Build-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite badge" />
+  <img src="https://img.shields.io/badge/Tailwind-Styling-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind badge" />
+  <img src="https://img.shields.io/badge/Node.js-Runtime-339933?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js badge" />
+  <img src="https://img.shields.io/badge/Express-API-111111?style=flat-square&logo=express&logoColor=white" alt="Express badge" />
+  <img src="https://img.shields.io/badge/MongoDB-Database-47A248?style=flat-square&logo=mongodb&logoColor=white" alt="MongoDB badge" />
+  <img src="https://img.shields.io/badge/Cloudinary-Media-3448C5?style=flat-square&logo=cloudinary&logoColor=white" alt="Cloudinary badge" />
+  <img src="https://img.shields.io/badge/Stripe-Payments-635BFF?style=flat-square&logo=stripe&logoColor=white" alt="Stripe badge" />
+</p>
+
+## Product Surfaces
+
+| Surface | Purpose | Key workflows |
+| --- | --- | --- |
+| Storefront | Customer-facing shopping interface | browse products, view details, manage addresses, place orders, track orders |
+| Admin Panel | Internal operations interface | add/edit plants, manage catalog visibility, review orders, update order status |
+| Backend API | Shared service layer | auth, product CRUD, address CRUD, order creation, summary reporting, Stripe webhook handling |
+
+## Highlights
+
+### Customer Experience
+
+- Account registration and login
+- Search-led catalog browsing
+- Product detail pages with catalog-backed data
+- Cart and checkout flow
+- Address book management
+- Current orders and order history
+- Stripe checkout success handling
+
+### Admin Experience
+
+- Separate admin authentication
+- Dashboard summary for orders, revenue, products, and users
+- Product creation and editing with up to four image uploads
+- Soft delete for products
+- Order monitoring and status updates
+
+### Backend Capabilities
+
+- JWT-based user and admin auth
+- Request rate limiting for auth endpoints
+- Product category listing and filtered product queries
+- Stronger product schema for pricing, stock, plant care, SEO, and flags
+- Stripe Checkout session creation and webhook-driven payment updates
+
+## Workspace
 
 ```text
 NatureVibes/
 |-- frontend/
 |-- Backend/
-`-- admin pannel/
+|-- admin pannel/
+`-- docs/
 ```
 
-Note: the admin directory is literally named `admin pannel`, so keep the quotes when running shell commands against that path.
+Note: the admin directory is literally named `admin pannel`. Keep quotes around that path in terminal commands.
 
-## Tech Stack
+## Quick Start
 
-### Frontend
+### Prerequisites
 
-- React 19
-- React Router 7
-- Vite 7
-- Tailwind CSS 4
-- Framer Motion
-
-### Backend
-
-- Node.js
-- Express 5
-- MongoDB with Mongoose
-- JWT authentication
-- bcryptjs password hashing
-- Multer uploads
-- Cloudinary media storage
-- Stripe Checkout and webhook handling
-
-## Core Features
-
-### Storefront
-
-- User registration and login
-- Product catalog fetched from the API
-- Search and category-driven browsing
-- Product detail pages
-- Cart and checkout flow
-- Saved addresses
-- Current orders and order history
-- Stripe success page handling
-
-### Admin Panel
-
-- Separate admin login
-- Dashboard summary for orders, revenue, users, and products
-- Product creation and editing
-- Multi-image uploads (`image1` to `image4`)
-- Product soft delete
-- Order list and status updates
-
-### API
-
-- User auth and profile endpoints
-- Address CRUD endpoints
-- Product CRUD plus category listing
-- Order placement and Stripe checkout session creation
-- Stripe webhook endpoint
-- Lightweight in-memory rate limiting for auth endpoints
-
-## Prerequisites
-
-- Node.js 20+ recommended
+- Node.js 20 or newer recommended
 - npm
 - MongoDB instance
 - Cloudinary account for image uploads
-- Stripe account if you want card payments
-
-## Quick Start
+- Stripe account if card payments are required
 
 ### 1. Install dependencies
 
@@ -89,7 +119,7 @@ From the repository root:
 npm run install:all
 ```
 
-You can also install each app independently:
+Or install each app independently:
 
 ```bash
 cd frontend && npm install
@@ -97,7 +127,7 @@ cd ../Backend && npm install
 cd "../admin pannel" && npm install
 ```
 
-### 2. Configure environment variables
+### 2. Environment variables
 
 Create `Backend/.env`:
 
@@ -119,14 +149,6 @@ STRIPE_SECRET_KEY=sk_test_your_stripe_secret
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 ```
 
-Notes:
-
-- `PORT` should be set to `9000` unless you also change the frontend API URL configuration.
-- `MONGODB_URI` may be either a base connection string or a full database URL. If the database name is missing, the backend appends `/NatureVibes` automatically.
-- CORS allows requests from `FRONTEND_URL`, `ADMIN_URL`, and `CLIENT_URL`.
-- `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are only required for Stripe checkout.
-- `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used for admin login and admin token validation.
-
 Create `frontend/.env`:
 
 ```env
@@ -139,7 +161,15 @@ Create `admin pannel/.env`:
 VITE_API_BASE_URL=http://localhost:9000
 ```
 
-### 3. Run the apps
+Important details:
+
+- `PORT` should stay `9000` unless both frontend apps are updated to match.
+- `MONGODB_URI` can be a base URI or a full database URI. If the database name is missing, the backend appends `/NatureVibes`.
+- CORS currently allows `FRONTEND_URL`, `ADMIN_URL`, and `CLIENT_URL`.
+- Stripe variables are only required if checkout is enabled.
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD` control admin login.
+
+### 3. Start the apps
 
 Use three terminals:
 
@@ -163,17 +193,17 @@ cd frontend && npm run dev
 cd "admin pannel" && npm run dev
 ```
 
-Default local URLs:
+### Local URLs
 
 - Storefront: `http://localhost:5173`
 - Admin panel: `http://localhost:5174`
 - Backend API: `http://localhost:9000`
 
-If you skip `PORT=9000`, the backend falls back to `4000`, and both frontend apps must be pointed at that port manually.
+If `PORT` is omitted, the backend falls back to `4000`. In that case, both frontend apps must point `VITE_API_BASE_URL` to port `4000`.
 
-## Available Scripts
+## Scripts
 
-### Root
+### Root scripts
 
 - `npm run install:frontend`
 - `npm run install:backend`
@@ -187,28 +217,17 @@ If you skip `PORT=9000`, the backend falls back to `4000`, and both frontend app
 - `npm run build:admin`
 - `npm run start:backend`
 
-Note: root `npm run build` installs and builds the storefront only, and matches the root `vercel.json` output path of `frontend/dist`.
+Note: root `npm run build` installs and builds the storefront only. That matches the root `vercel.json` output directory of `frontend/dist`.
 
-### Backend
+### App-level scripts
 
-- `npm run server`
-- `npm start`
+| App | Commands |
+| --- | --- |
+| `Backend/` | `npm run server`, `npm start` |
+| `frontend/` | `npm run dev`, `npm run build`, `npm run preview`, `npm run lint` |
+| `admin pannel/` | `npm run dev`, `npm run build`, `npm run preview`, `npm run lint` |
 
-### Frontend
-
-- `npm run dev`
-- `npm run build`
-- `npm run preview`
-- `npm run lint`
-
-### Admin Panel
-
-- `npm run dev`
-- `npm run build`
-- `npm run preview`
-- `npm run lint`
-
-## Application Routes
+## Route Map
 
 ### Storefront routes
 
@@ -220,11 +239,11 @@ Note: root `npm run build` installs and builds the storefront only, and matches 
 - `/account/orders/current`
 - `/account/orders/history`
 - `/account/addresses`
-- `/profile` -> redirects to `/account/profile`
-- `/account` -> redirects to `/account/profile`
-- `/my-orders` -> redirects to `/account/orders/current`
-- `/order-history` -> redirects to `/account/orders/history`
-- `/my-addresses` -> redirects to `/account/addresses`
+- `/profile` redirects to `/account/profile`
+- `/account` redirects to `/account/profile`
+- `/my-orders` redirects to `/account/orders/current`
+- `/order-history` redirects to `/account/orders/history`
+- `/my-addresses` redirects to `/account/addresses`
 - `/logout`
 - `/account/logout`
 
@@ -237,7 +256,7 @@ Note: root `npm run build` installs and builds the storefront only, and matches 
 - `/add-plant`
 - `/edit-plant/:productId`
 
-## API Overview
+## API Snapshot
 
 Base URL: `http://localhost:9000`
 
@@ -276,7 +295,7 @@ Notes:
 - `POST /api/products/remove`
 - `DELETE /api/products/:productId`
 
-Product list query params supported by `GET /api/products/list`:
+Supported `GET /api/products/list` query params:
 
 - `page`
 - `limit`
@@ -290,15 +309,15 @@ Product list query params supported by `GET /api/products/list`:
 - `isNewArrival`
 - `isTrending`
 - `search`
-- `sortBy` (`createdAt`, `updatedAt`, `price`, `stock`, `name`, `publishedAt`)
-- `sortOrder` (`asc` or `desc`)
+- `sortBy` with `createdAt`, `updatedAt`, `price`, `stock`, `name`, `publishedAt`
+- `sortOrder` with `asc` or `desc`
 
 Notes:
 
-- Product creation and updates accept multipart form-data.
+- Product creation and updates use multipart form-data.
 - Upload field names are `image1`, `image2`, `image3`, and `image4`.
-- Products are soft deleted by setting `isDeleted: true`.
-- `GET /api/products/categories` supports `includeEmpty` and `publishedOnly` query params.
+- Products are soft deleted with `isDeleted: true`.
+- Category listing supports `includeEmpty` and `publishedOnly`.
 
 ### Order endpoints
 
@@ -314,77 +333,76 @@ Notes:
 
 - `place`, `stripe/create-checkout-session`, and `my` require a logged-in user.
 - `list`, `summary`, and `status` require an admin token.
-- Stripe checkout creates the order first, then updates payment status through the webhook.
-- Supported order statuses: `placed`, `processing`, `shipped`, `delivered`, `cancelled`.
-- Supported payment statuses: `pending`, `paid`, `failed`, `refunded`.
-- Supported payment methods: `cod`, `razorpay`, `upi`, `card`, `netbanking`, `stripe`.
+- Stripe checkout creates the order first and finalizes payment status through the webhook.
+- Order statuses: `placed`, `processing`, `shipped`, `delivered`, `cancelled`
+- Payment statuses: `pending`, `paid`, `failed`, `refunded`
+- Payment methods: `cod`, `razorpay`, `upi`, `card`, `netbanking`, `stripe`
 
-## Data Model Highlights
+## Data Model Notes
 
-### Product
+### Product model
 
-The product schema already supports more than a basic catalog item:
+The current product schema supports:
 
-- category keys and human-readable category labels
+- catalog category keys and readable labels
 - optional variants
-- pricing, tax, and stock metadata
-- plant-specific details such as sunlight, watering, difficulty, and pet-friendliness
-- care guide fields
-- shipping fields
-- featured, bestseller, new-arrival, and trending flags
-- SEO metadata
-- review aggregates
+- pricing, tax, stock, and publishing fields
+- plant details such as watering, sunlight, difficulty, and pet-friendliness
+- care guide and shipping metadata
+- marketing flags including featured, bestseller, new-arrival, and trending
+- SEO metadata and review aggregates
 
-### Order
+### Order model
 
 Orders store:
 
-- order number
+- generated order number
 - normalized item snapshots
 - delivery address
-- customer info
-- payment status and payment method
-- Stripe session and payment intent identifiers
+- customer information
+- payment method and payment status
+- Stripe session and payment intent references
 
-### User
+### User model
 
 Users store:
 
-- account profile info
+- profile information
 - hashed password
-- address book
-- cart data object
-- role and activity fields
+- saved addresses
+- cart state object
+- role and activity metadata
 
 ## Local Stripe Testing
 
-If you want to test the webhook locally, run Stripe CLI in a separate terminal:
+Run Stripe CLI in a separate terminal:
 
 ```bash
 stripe listen --forward-to localhost:9000/api/orders/stripe/webhook
 ```
 
-Make sure the forwarding port matches `PORT` in `Backend/.env`.
+Make sure the forwarded URL uses the same backend port as `Backend/.env`.
 
-## Deployment Notes
+## Deployment
 
-This repo includes Vercel config files for:
+This repository includes `vercel.json` files for:
 
 - the root storefront deployment
 - `frontend/`
 - `admin pannel/`
 - `Backend/`
 
-Common deployment pattern:
+Recommended deployment flow:
 
-1. Deploy `Backend/` as the API service.
-2. Deploy `frontend/` as the storefront.
-3. Deploy `admin pannel/` as the admin app.
-4. Set `FRONTEND_URL` and `ADMIN_URL` in the backend environment so CORS and Stripe redirects work correctly.
-5. If using Stripe, configure the webhook endpoint as `https://<backend-domain>/api/orders/stripe/webhook`.
+1. Deploy `Backend/` first.
+2. Deploy `frontend/`.
+3. Deploy `admin pannel/`.
+4. Set backend environment variables for `FRONTEND_URL` and `ADMIN_URL`.
+5. If Stripe is enabled, configure `https://<backend-domain>/api/orders/stripe/webhook` in Stripe.
 
 ## Current Gaps
 
-- No automated test suite is wired into the root scripts.
-- No `LICENSE` file is declared at the repository root.
-- The admin directory name contains a typo (`admin pannel`), so keep that in mind for tooling and deployment setup.
+- No automated test suite is exposed from the root scripts.
+- No repository-level `LICENSE` file is present.
+- The admin folder name is misspelled as `admin pannel`, which matters for commands and deployment settings.
+

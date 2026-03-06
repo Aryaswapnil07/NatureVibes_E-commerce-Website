@@ -1,0 +1,61 @@
+<svg width="960" height="280" viewBox="0 0 960 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="960" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D2318" />
+      <stop offset="1" stop-color="#173A2A" />
+    </linearGradient>
+    <linearGradient id="orb" x1="58" y1="48" x2="232" y2="222" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C7F36A" />
+      <stop offset="1" stop-color="#3BAE63" />
+    </linearGradient>
+    <linearGradient id="leaf" x1="110" y1="84" x2="179" y2="161" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E9FFB8" />
+      <stop offset="1" stop-color="#89D35E" />
+    </linearGradient>
+    <linearGradient id="spark" x1="728" y1="62" x2="900" y2="228" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C7F36A" stop-opacity="0.9" />
+      <stop offset="1" stop-color="#3BAE63" stop-opacity="0" />
+    </linearGradient>
+    <filter id="shadow" x="18" y="20" width="236" height="236" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix" />
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+      <feOffset dy="10" />
+      <feGaussianBlur stdDeviation="12" />
+      <feComposite in2="hardAlpha" operator="out" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0196078 0 0 0 0 0.0745098 0 0 0 0 0.0431373 0 0 0 0.32 0" />
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1" />
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape" />
+    </filter>
+  </defs>
+
+  <rect width="960" height="280" rx="38" fill="url(#bg)" />
+  <circle cx="834" cy="136" r="102" fill="url(#spark)" />
+  <circle cx="874" cy="82" r="8" fill="#D6F891" fill-opacity="0.75" />
+  <circle cx="806" cy="54" r="4" fill="#D6F891" fill-opacity="0.55" />
+  <circle cx="903" cy="164" r="5" fill="#D6F891" fill-opacity="0.45" />
+
+  <g filter="url(#shadow)">
+    <rect x="42" y="42" width="188" height="188" rx="46" fill="#11291D" stroke="#2E6247" stroke-width="2" />
+    <circle cx="136" cy="136" r="62" fill="url(#orb)" />
+    <path d="M123 161C105 141 103 118 116 101C130 83 154 80 172 91C188 101 197 123 190 144C183 165 163 179 141 179H109C103 179 98 174 98 168C98 163 103 159 109 159H123V161Z" fill="#0D2318" fill-opacity="0.2" />
+    <path d="M104 119C104 108.507 112.507 100 123 100H149C159.493 100 168 108.507 168 119V162C168 170.837 160.837 178 152 178H120C111.163 178 104 170.837 104 162V119Z" fill="#F8FFF0" />
+    <path d="M118 112C118 102.611 125.611 95 135 95H137C146.389 95 154 102.611 154 112" stroke="#F8FFF0" stroke-width="10" stroke-linecap="round" />
+    <path d="M138.467 91.736C154.466 91.386 168.176 101.138 172.037 116.852C156.038 117.202 142.328 107.451 138.467 91.736Z" fill="url(#leaf)" />
+    <path d="M139.5 92.5C148.5 99 154.5 106.5 157.5 116" stroke="#0D6A3D" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M120 124H152" stroke="#B4D7B9" stroke-width="4" stroke-linecap="round" />
+    <path d="M120 137H152" stroke="#B4D7B9" stroke-width="4" stroke-linecap="round" />
+    <path d="M120 150H146" stroke="#B4D7B9" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <rect x="272" y="74" width="132" height="24" rx="12" fill="#244F3A" />
+  <text x="292" y="91" fill="#CFF58A" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="3.2">PLANT COMMERCE</text>
+
+  <text x="272" y="150" fill="#F4F9EF" font-family="Segoe UI, Arial, sans-serif" font-size="66" font-weight="800">NatureVibes</text>
+  <text x="274" y="192" fill="#B5C9BE" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="500">
+    Storefront, admin dashboard, and API for a modern plant retail stack
+  </text>
+
+  <rect x="274" y="214" width="128" height="10" rx="5" fill="#C7F36A" />
+  <rect x="414" y="214" width="92" height="10" rx="5" fill="#2F6A4B" />
+  <rect x="518" y="214" width="72" height="10" rx="5" fill="#2F6A4B" />
+</svg>
