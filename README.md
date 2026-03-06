@@ -3,11 +3,11 @@
   <h1>NatureVibes</h1>
   <p><strong>Professional plant commerce platform</strong> built as a full-stack monorepo with a customer storefront, admin workspace, and production-style REST API.</p>
   <p>
-    <a href="#overview">Overview</a> •
-    <a href="#stack">Stack</a> •
-    <a href="#workspace">Workspace</a> •
-    <a href="#quick-start">Quick Start</a> •
-    <a href="#api-snapshot">API</a> •
+    <a href="#overview">Overview</a> &bull;
+    <a href="#stack">Stack</a> &bull;
+    <a href="#workspace">Workspace</a> &bull;
+    <a href="#quick-start">Quick Start</a> &bull;
+    <a href="#api-snapshot">API</a> &bull;
     <a href="#deployment">Deployment</a>
   </p>
   <p>
@@ -405,4 +405,3 @@ Recommended deployment flow:
 - No automated test suite is exposed from the root scripts.
 - No repository-level `LICENSE` file is present.
 - The admin folder name is misspelled as `admin pannel`, which matters for commands and deployment settings.
-
