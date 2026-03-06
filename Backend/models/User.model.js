@@ -1,6 +1,4 @@
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
-
 const addressSchema = new mongoose.Schema(
   {
     label: { type: String, trim: true, default: "Home" },
@@ -35,13 +33,16 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      minlength: 6,
+      minlength: 8,
+      maxlength: 200,
+      select: false,
     },
 
     phone: {
       type: String,
       trim: true,
       default: "",
+      match: [/^[0-9+\-\s()]{0,20}$/, "Please enter a valid phone number"],
     },
 
     // 🛒 Cart
@@ -59,6 +60,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["customer", "admin"],
       default: "customer",
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    lastLoginAt: {
+      type: Date,
+      default: null,
+    },
+
+    passwordChangedAt: {
+      type: Date,
+      default: null,
     },
   },
   {
