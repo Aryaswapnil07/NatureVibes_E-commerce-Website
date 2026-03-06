@@ -1,13 +1,22 @@
 import { useState } from "react";
 import API_BASE_URL from "../config/api";
-import { CATEGORY_OPTIONS, PRODUCT_TYPE_OPTIONS } from "../constants/productOptions";
+import {
+  CATALOG_CATEGORY_OPTIONS,
+  PRODUCT_TYPE_OPTIONS,
+} from "../constants/productOptions";
+
+const defaultCategory = CATALOG_CATEGORY_OPTIONS[0] || {
+  key: "indoor-plants",
+  label: "Indoor Plants",
+};
 
 const initialForm = {
   name: "",
   description: "",
   shortDescription: "",
   productType: "live_plant",
-  category: "Indoor Plants",
+  categoryKey: defaultCategory.key,
+  category: defaultCategory.label,
   subCategory: "",
   tags: "",
   price: "",
@@ -40,12 +49,22 @@ const AdminAddPlant = ({ token }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const categoryOptions = CATEGORY_OPTIONS.includes(form.category)
-    ? CATEGORY_OPTIONS
-    : [form.category, ...CATEGORY_OPTIONS].filter(Boolean);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
+
+    if (name === "categoryKey") {
+      const selectedCategory = CATALOG_CATEGORY_OPTIONS.find(
+        (category) => category.key === value
+      );
+      setForm((prev) => ({
+        ...prev,
+        categoryKey: value,
+        category: selectedCategory?.label || prev.category,
+      }));
+      return;
+    }
+
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -71,6 +90,7 @@ const AdminAddPlant = ({ token }) => {
       payload.append("description", form.description);
       payload.append("shortDescription", form.shortDescription);
       payload.append("productType", form.productType);
+      payload.append("categoryKey", form.categoryKey);
       payload.append("category", form.category);
       payload.append("subCategory", form.subCategory);
       payload.append("tags", form.tags);
@@ -257,17 +277,20 @@ const AdminAddPlant = ({ token }) => {
           </label>
           <select
             id="category"
-            name="category"
-            value={form.category}
+            name="categoryKey"
+            value={form.categoryKey}
             onChange={handleChange}
             className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
           >
-            {categoryOptions.map((category) => (
-              <option key={category} value={category}>
-                {category}
+            {CATALOG_CATEGORY_OPTIONS.map((category) => (
+              <option key={category.key} value={category.key}>
+                {category.label} ({category.section})
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Selected category: <strong>{form.category}</strong>
+          </p>
         </div>
 
         <div>

@@ -21,7 +21,9 @@ const ProductList = ({ token }) => {
     setError("");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products/list`);
+      const response = await fetch(
+        `${API_BASE_URL}/api/products/list?limit=500&sortBy=createdAt&sortOrder=desc`
+      );
       const payload = await response.json();
 
       if (!response.ok || !payload.success) {

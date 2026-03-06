@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import API_BASE_URL from "../config/api";
-import { CATEGORY_OPTIONS, PRODUCT_TYPE_OPTIONS } from "../constants/productOptions";
+import {
+  CATALOG_CATEGORY_OPTIONS,
+  PRODUCT_TYPE_OPTIONS,
+} from "../constants/productOptions";
 
 const imageSlots = [
   { key: "image1", label: "Front View (Image 1)" },
@@ -22,7 +25,8 @@ const defaultForm = {
   description: "",
   shortDescription: "",
   productType: "live_plant",
-  category: "Indoor Plants",
+  categoryKey: CATALOG_CATEGORY_OPTIONS[0]?.key || "indoor-plants",
+  category: CATALOG_CATEGORY_OPTIONS[0]?.label || "Indoor Plants",
   subCategory: "",
   tags: "",
   price: "",
@@ -35,6 +39,14 @@ const defaultForm = {
   isPublished: false,
 };
 
+const normalizeCategoryKey = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 const EditPlant = ({ token }) => {
   const { productId } = useParams();
   const navigate = useNavigate();
@@ -46,9 +58,18 @@ const EditPlant = ({ token }) => {
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const categoryOptions = CATEGORY_OPTIONS.includes(form.category)
-    ? CATEGORY_OPTIONS
-    : [form.category, ...CATEGORY_OPTIONS].filter(Boolean);
+  const categoryOptions = CATALOG_CATEGORY_OPTIONS.some(
+    (category) => category.key === form.categoryKey
+  )
+    ? CATALOG_CATEGORY_OPTIONS
+    : [
+        {
+          key: form.categoryKey || normalizeCategoryKey(form.category),
+          label: form.category || "Custom Category",
+          section: "Custom",
+        },
+        ...CATALOG_CATEGORY_OPTIONS,
+      ];
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -70,12 +91,33 @@ const EditPlant = ({ token }) => {
         }
 
         const product = payload.product;
+        const matchedCategory = CATALOG_CATEGORY_OPTIONS.find((category) => {
+          if (product.categoryKey && category.key === product.categoryKey) {
+            return true;
+          }
+
+          return (
+            String(category.label || "").toLowerCase() ===
+            String(product.category || "").toLowerCase()
+          );
+        });
+
         setForm({
           name: product.name || "",
           description: product.description || "",
           shortDescription: product.shortDescription || "",
           productType: product.productType || "live_plant",
-          category: product.category || "",
+          categoryKey:
+            matchedCategory?.key ||
+            product.categoryKey ||
+            normalizeCategoryKey(product.category) ||
+            CATALOG_CATEGORY_OPTIONS[0]?.key ||
+            "indoor-plants",
+          category:
+            matchedCategory?.label ||
+            product.category ||
+            CATALOG_CATEGORY_OPTIONS[0]?.label ||
+            "Indoor Plants",
           subCategory: product.subCategory || "",
           tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
           price: product.price ?? "",
@@ -100,6 +142,19 @@ const EditPlant = ({ token }) => {
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
+
+    if (name === "categoryKey") {
+      const selectedCategory = CATALOG_CATEGORY_OPTIONS.find(
+        (category) => category.key === value
+      );
+      setForm((prev) => ({
+        ...prev,
+        categoryKey: value,
+        category: selectedCategory?.label || prev.category,
+      }));
+      return;
+    }
+
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -126,6 +181,7 @@ const EditPlant = ({ token }) => {
       payload.append("description", form.description);
       payload.append("shortDescription", form.shortDescription);
       payload.append("productType", form.productType);
+      payload.append("categoryKey", form.categoryKey);
       payload.append("category", form.category);
       payload.append("subCategory", form.subCategory);
       payload.append("tags", form.tags);
@@ -322,17 +378,20 @@ const EditPlant = ({ token }) => {
           </label>
           <select
             id="category"
-            name="category"
-            value={form.category}
+            name="categoryKey"
+            value={form.categoryKey}
             onChange={handleChange}
             className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
           >
             {categoryOptions.map((category) => (
-              <option key={category} value={category}>
-                {category}
+              <option key={category.key} value={category.key}>
+                {category.label} ({category.section})
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Selected category: <strong>{form.category}</strong>
+          </p>
         </div>
 
         <div>
