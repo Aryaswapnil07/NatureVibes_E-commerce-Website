@@ -147,28 +147,23 @@ function useOutsideClick(ref, handler) {
   }, [ref, handler]);
 }
 
-const Navbar = ({
+const NavbarContent = ({
   onOpenLogin,
   onLogout,
   isLoggedIn,
   allProducts,
   catalogSections = [],
+  pathname,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSubMenu, setActiveSubMenu] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const userMenuRef = useRef(null);
-  const location = useLocation();
   const navigate = useNavigate();
   const searchPlaceholder = useRotatingPlaceholder(SEARCH_SUGGESTIONS);
 
   useOutsideClick(userMenuRef, () => setIsUserMenuOpen(false));
-
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-    setActiveSubMenu(null);
-  }, [location.pathname]);
 
   useEffect(() => {
     const onResize = () => {
@@ -214,14 +209,14 @@ const Navbar = ({
       event.preventDefault();
       closeMobileMenu();
 
-      if (location.pathname !== "/") {
+      if (pathname !== "/") {
         navigate("/");
         setTimeout(() => scrollToSection(target), 120);
       } else {
         scrollToSection(target);
       }
     },
-    [location.pathname, navigate, closeMobileMenu, scrollToSection]
+    [pathname, navigate, closeMobileMenu, scrollToSection]
   );
 
   const toggleSubMenu = useCallback((event, menuName) => {
@@ -257,7 +252,9 @@ const Navbar = ({
   return (
     <header className="header-main">
       <Link to="/" className="brand-logo" onClick={(event) => handleNavigate(event, "#home")}>
-        <span className="brand-leaf">??</span>
+        <span className="material-icons brand-leaf" aria-hidden="true">
+          spa
+        </span>
         <span className="brand-text">NatureVibes</span>
       </Link>
 
@@ -382,6 +379,12 @@ const Navbar = ({
       </button>
     </header>
   );
+};
+
+const Navbar = (props) => {
+  const location = useLocation();
+
+  return <NavbarContent key={location.pathname} pathname={location.pathname} {...props} />;
 };
 
 export default Navbar;

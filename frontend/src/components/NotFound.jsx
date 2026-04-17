@@ -4,10 +4,14 @@ import { Leaf, Home, RefreshCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const NotFound = () => {
+  const MotionDiv = motion.div;
+  const MotionHeading = motion.h1;
+  const MotionParagraph = motion.p;
+
   return (
     <div style={styles.container}>
       {/* Animated Plant Icon */}
-      <motion.div
+      <MotionDiv
         initial={{ rotate: 0, opacity: 0 }}
         animate={{ 
           rotate: [0, -10, 10, -5, 0],
@@ -21,17 +25,17 @@ const NotFound = () => {
       >
         
         <Leaf size={120} color="#4CAF50" strokeWidth={1.5} />
-      </motion.div>
+      </MotionDiv>
 
-      <motion.h1 
+      <MotionHeading 
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         style={styles.title}
       >
         404
-      </motion.h1>
+      </MotionHeading>
 
-      <motion.p 
+      <MotionParagraph 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
@@ -39,7 +43,7 @@ const NotFound = () => {
       >
         Oops! This leaf has withered away. <br />
         The page you are looking for doesn't exist in our garden.
-      </motion.p>
+      </MotionParagraph>
 
       <div style={styles.buttonGroup}>
         <Link to="/" style={styles.button}>

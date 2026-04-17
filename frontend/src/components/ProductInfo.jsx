@@ -22,6 +22,8 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
+const formatNumericCurrency = (value) => formatCurrency(value).replace(/[^0-9.,-]/g, "");
+
 const formatLabel = (value) =>
   String(value || "")
     .replaceAll("_", " ")
@@ -36,6 +38,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
     if (location.state?.product) {
       return location.state.product;
     }
+
     return allProducts.find((item) => String(item.id) === String(productId));
   }, [allProducts, location.state, productId]);
 
@@ -139,13 +142,16 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
     return [];
   }, [product]);
 
+  const productIdentity = product?.id || product?._id || backendProductId || "";
+
   useEffect(() => {
     setSelectedImageIndex(0);
     setQuantity(1);
-    if (product) {
+
+    if (productIdentity) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [product?.id, product?._id]);
+  }, [productIdentity]);
 
   const activeImageIndex =
     selectedImageIndex >= 0 && selectedImageIndex < gallery.length
@@ -158,6 +164,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
     Number(product?.discountedPrice || 0) > 0
       ? Number(product?.price || 0)
       : Number(product?.price || 0);
+  const currentPriceText = formatNumericCurrency(currentPrice);
   const hasDiscount =
     Number(product?.discountedPrice || 0) > 0 &&
     Number(product?.discountedPrice || 0) < Number(product?.price || 0);
@@ -215,6 +222,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
 
   const addSelectedQuantityToCart = () => {
     if (!cartProduct || !onAddToCart || !inStock) return;
+
     for (let index = 0; index < quantity; index += 1) {
       onAddToCart(cartProduct);
     }
@@ -299,7 +307,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
                   <div className="price-stack">
                     <p className="product-price">
                       <IndianRupee size={24} />
-                      {formatCurrency(currentPrice).replace("₹", "")}
+                      {currentPriceText}
                     </p>
                     {hasDiscount ? (
                       <div className="offer-row">
@@ -336,7 +344,9 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
                     <button
                       type="button"
                       onClick={() =>
-                        setQuantity((prev) => Math.min(inStock ? Math.max(stockCount, 1) : 1, prev + 1))
+                        setQuantity((prev) =>
+                          Math.min(inStock ? Math.max(stockCount, 1) : 1, prev + 1)
+                        )
                       }
                       disabled={!inStock}
                     >

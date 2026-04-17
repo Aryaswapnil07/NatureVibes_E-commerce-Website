@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import API_BASE_URL from "../config/api";
+import MaterialSpinner from "../components/MaterialSpinner";
 import {
   CATALOG_CATEGORY_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
 } from "../constants/productOptions";
+import {
+  formatFileSize,
+  getTotalSelectedImageBytes,
+  getUploadRequestErrorMessage,
+  MAX_VERCEL_UPLOAD_BYTES,
+  validateProductImageUpload,
+} from "../utils/productUpload";
 
 const imageSlots = [
   { key: "image1", label: "Front View (Image 1)" },
@@ -58,6 +66,7 @@ const EditPlant = ({ token }) => {
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const totalSelectedImageBytes = getTotalSelectedImageBytes(imageFiles);
   const categoryOptions = CATALOG_CATEGORY_OPTIONS.some(
     (category) => category.key === form.categoryKey
   )
@@ -175,6 +184,11 @@ const EditPlant = ({ token }) => {
     setMessage("");
 
     try {
+      const uploadValidationMessage = validateProductImageUpload(imageFiles);
+      if (uploadValidationMessage) {
+        throw new Error(uploadValidationMessage);
+      }
+
       const payload = new FormData();
       payload.append("productId", productId);
       payload.append("name", form.name);
@@ -215,33 +229,47 @@ const EditPlant = ({ token }) => {
       setCurrentImages(data.product?.images || currentImages);
       setImageFiles(emptyImageFiles);
     } catch (submitError) {
-      setError(submitError.message || "Unable to update product");
+      setError(getUploadRequestErrorMessage(submitError, "Unable to update product"));
     } finally {
       setLoadingSubmit(false);
     }
   };
 
+  const pageHeader = (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">Edit Plant</h1>
+        <p className="text-sm text-gray-500">
+          Update plant details and upload 3-4 new angle images if needed.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => navigate("/list")}
+        className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+      >
+        Back to List
+      </button>
+    </div>
+  );
+
   if (loadingData) {
-    return <p className="text-sm text-gray-500">Loading product details...</p>;
+    return (
+      <section className="space-y-5">
+        {pageHeader}
+        <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-gray-200 bg-white px-6 py-10 shadow-sm">
+          <MaterialSpinner
+            label="Loading product"
+            caption="Fetching plant details from the backend."
+          />
+        </div>
+      </section>
+    );
   }
 
   return (
     <section className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Edit Plant</h1>
-          <p className="text-sm text-gray-500">
-            Update plant details and upload 3-4 new angle images if needed.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate("/list")}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-        >
-          Back to List
-        </button>
-      </div>
+      {pageHeader}
 
       {message ? (
         <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
@@ -488,6 +516,13 @@ const EditPlant = ({ token }) => {
           </p>
           <p className="mb-3 text-xs text-gray-500">
             If you upload any new image here, existing gallery images will be replaced.
+          </p>
+          <p className="mb-3 text-xs text-gray-500">
+            Keep the total selected image size under{" "}
+            {formatFileSize(MAX_VERCEL_UPLOAD_BYTES)} for Vercel uploads.
+          </p>
+          <p className="mb-3 text-xs text-gray-500">
+            Selected total: {formatFileSize(totalSelectedImageBytes)}
           </p>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {imageSlots.map((slot) => (

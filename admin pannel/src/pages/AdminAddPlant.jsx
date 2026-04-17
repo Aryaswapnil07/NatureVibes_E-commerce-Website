@@ -4,6 +4,13 @@ import {
   CATALOG_CATEGORY_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
 } from "../constants/productOptions";
+import {
+  formatFileSize,
+  getTotalSelectedImageBytes,
+  getUploadRequestErrorMessage,
+  MAX_VERCEL_UPLOAD_BYTES,
+  validateProductImageUpload,
+} from "../utils/productUpload";
 
 const defaultCategory = CATALOG_CATEGORY_OPTIONS[0] || {
   key: "indoor-plants",
@@ -49,6 +56,7 @@ const AdminAddPlant = ({ token }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const totalSelectedImageBytes = getTotalSelectedImageBytes(imageFiles);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -85,6 +93,11 @@ const AdminAddPlant = ({ token }) => {
     setError("");
 
     try {
+      const uploadValidationMessage = validateProductImageUpload(imageFiles);
+      if (uploadValidationMessage) {
+        throw new Error(uploadValidationMessage);
+      }
+
       const payload = new FormData();
       payload.append("name", form.name);
       payload.append("description", form.description);
@@ -124,7 +137,7 @@ const AdminAddPlant = ({ token }) => {
       setImageFiles(emptyImageFiles);
       setMessage("Product created successfully.");
     } catch (submitError) {
-      setError(submitError.message);
+      setError(getUploadRequestErrorMessage(submitError, "Unable to create product"));
     } finally {
       setLoading(false);
     }
@@ -369,6 +382,13 @@ const AdminAddPlant = ({ token }) => {
         <div className="lg:col-span-2 rounded-md border border-gray-200 bg-gray-50 p-4">
           <p className="mb-3 text-sm font-semibold text-gray-700">
             Plant Images (upload 3-4 angles)
+          </p>
+          <p className="mb-3 text-xs text-gray-500">
+            Keep the total selected image size under{" "}
+            {formatFileSize(MAX_VERCEL_UPLOAD_BYTES)} for Vercel uploads.
+          </p>
+          <p className="mb-3 text-xs text-gray-500">
+            Selected total: {formatFileSize(totalSelectedImageBytes)}
           </p>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {imageSlots.map((slot) => (
