@@ -40,7 +40,7 @@ const productSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     slug: { type: String, lowercase: true, trim: true },
     sku: { type: String },
-    brand: { type: String, default: "NatureVibes" },
+    brand: { type: String, default: "UrbanVibes" },
 
     description: { type: String, required: true },
     shortDescription: String,

@@ -1,5 +1,5 @@
 /* ============================================================
-   navbar.css  — NatureVibes Responsive Navbar
+   navbar.css  - UrbanVibes Responsive Navbar
    Breakpoints: 320 / 480 / 768 (iPad mini) / 1024 (iPad Pro)
                 / 1280 / 1440+
    ============================================================ */
@@ -306,7 +306,7 @@
 }
 
 /* ============================================================
-   MEGA MENUS — Desktop
+   MEGA MENUS - Desktop
    ============================================================ */
 .mega-menu-container {
   position: fixed;
@@ -612,7 +612,7 @@
 }
 
 /* ============================================================
-   MOBILE NAV (≤ 1024px) — iPad Portrait, Tablet, Phone
+   MOBILE NAV (≤ 1024px) - iPad Portrait, Tablet, Phone
    ============================================================ */
 @media (max-width: 1024px) {
 
@@ -845,7 +845,7 @@
   .furniture-grid { grid-template-columns: 1fr 1fr; }
 }
 
-/* ── Phone (≤ 480px) — iPhone SE to iPhone 14 Pro Max ──────── */
+/* ── Phone (≤ 480px) - iPhone SE to iPhone 14 Pro Max ──────── */
 @media (max-width: 480px) {
   :root { --header-height: 56px; }
 

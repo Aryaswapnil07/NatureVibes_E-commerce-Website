@@ -198,7 +198,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
 
     const fullDescription = String(product?.description || "").trim();
     if (!fullDescription) {
-      return "Carefully selected quality product from NatureVibes for your home and lifestyle.";
+      return "Carefully selected quality product from UrbanVibes for your home and lifestyle.";
     }
 
     const firstSentence = fullDescription.split(".")[0]?.trim();
@@ -394,7 +394,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
                   </div>
                   <div className="spec-item">
                     <span>Brand</span>
-                    <strong>{product.brand || "NatureVibes"}</strong>
+                    <strong>{product.brand || "UrbanVibes"}</strong>
                   </div>
                   <div className="spec-item">
                     <span>SKU</span>
@@ -421,7 +421,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
                 <h3 className="section-subtitle">Description</h3>
                 <p className="description-text">
                   {product.description ||
-                    `This ${product.name} is carefully nurtured at NatureVibes to elevate your space.`}
+                    `This ${product.name} is carefully nurtured at UrbanVibes to elevate your space.`}
                 </p>
               </div>
 
@@ -479,7 +479,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
               </div>
 
               <div className="trust-features-card">
-                <h4 className="trust-title">Why Shop From NatureVibes?</h4>
+                <h4 className="trust-title">Why Shop From UrbanVibes?</h4>
                 <div className="trust-grid">
                   <div className="trust-item">
                     <CheckCircle size={16} /> Healthy Plants Guaranteed

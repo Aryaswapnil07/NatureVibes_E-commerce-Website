@@ -164,7 +164,7 @@ const LoginModal = ({ isOpen, onClose, onAuthSuccess }) => {
         <div style={{ marginTop: "20px", textAlign: "center", fontSize: "14px" }}>
           {isLoginView ? (
             <p>
-              New to NatureVibes?{" "}
+              New to UrbanVibes?{" "}
               <span
                 onClick={toggleView}
                 style={{ color: "var(--green, #28a745)", cursor: "pointer", fontWeight: "bold" }}

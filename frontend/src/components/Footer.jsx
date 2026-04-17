@@ -18,8 +18,8 @@ const Footer = () => {
             Call: +91-8340198130
           </a>
           
-          <a href="mailto:support@naturevibes.com" className="contact-link">
-            Email: support@naturevibes.com  
+          <a href="mailto:support@urbanvibes.com" className="contact-link">
+            Email: support@urbanvibes.com
           </a>
         </div>
 
@@ -71,10 +71,11 @@ const Footer = () => {
       </div>
       
       <div className="footer-copyright">
-         © 2025 NatureVibes — Designed for Sustainable Living
+         (c) 2025 UrbanVibes - Designed for Sustainable Living
       </div>
     </footer>
   );
 };
 
 export default Footer;
+

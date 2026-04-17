@@ -50,7 +50,7 @@
   <rect x="272" y="74" width="132" height="24" rx="12" fill="#244F3A" />
   <text x="292" y="91" fill="#CFF58A" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="3.2">PLANT COMMERCE</text>
 
-  <text x="272" y="150" fill="#F4F9EF" font-family="Segoe UI, Arial, sans-serif" font-size="66" font-weight="800">NatureVibes</text>
+  <text x="272" y="150" fill="#F4F9EF" font-family="Segoe UI, Arial, sans-serif" font-size="66" font-weight="800">UrbanVibes</text>
   <text x="274" y="192" fill="#B5C9BE" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="500">
     Storefront, admin dashboard, and API for a modern plant retail stack
   </text>

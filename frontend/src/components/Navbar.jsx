@@ -255,7 +255,7 @@ const NavbarContent = ({
         <span className="material-icons brand-leaf" aria-hidden="true">
           spa
         </span>
-        <span className="brand-text">NatureVibes</span>
+        <span className="brand-text">UrbanVibes</span>
       </Link>
 
       <div className="search-wrapper">

@@ -61,7 +61,7 @@ const normalizeCatalogProduct = (product, fallbackIndex = 0) => {
     baseCategory: product.category || "",
     subCategory: product.subCategory || "",
     productType: product.productType || "",
-    brand: product.brand || "NatureVibes",
+    brand: product.brand || "UrbanVibes",
     sku: product.sku || "",
     price: Number.isFinite(price) ? price : 0,
     originalPrice: Number.isFinite(regularPrice) ? regularPrice : 0,
@@ -358,9 +358,9 @@ function App() {
 
               <section className="about-section" id="about">
                 <div className="about-content">
-                  <h2>About NatureVibes</h2>
+                  <h2>About UrbanVibes</h2>
                   <p>
-                    NatureVibes brings curated plants, seeds, and plant-care essentials for
+                    UrbanVibes brings curated plants, seeds, and plant-care essentials for
                     modern homes and gardens.
                   </p>
                 </div>

@@ -17,8 +17,8 @@ const userAuth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      issuer: "naturevibes-api",
-      audience: "naturevibes-client",
+      issuer: "urbanvibes-api",
+      audience: "urbanvibes-client",
     });
 
     if (!decoded || decoded.type !== "user" || !decoded.id) {

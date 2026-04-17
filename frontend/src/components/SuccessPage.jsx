@@ -53,7 +53,7 @@ const SuccessPage = ({ clearCart }) => {
         
         <h1 className="success-title">Order Placed Successfully!</h1>
         <p className="success-msg">
-          Thank you for choosing <strong>NatureVibes</strong>. Your new green companions are being prepared for their journey to your home.
+          Thank you for choosing <strong>UrbanVibes</strong>. Your new green companions are being prepared for their journey to your home.
         </p>
 
         <div className="order-details-mini">
