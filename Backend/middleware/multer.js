@@ -6,7 +6,7 @@ import path from "path";
 // On Vercel, only /tmp is writable. Locally we keep /uploads in project root.
 const uploadDir =
   process.env.VERCEL === "1"
-    ? path.join(os.tmpdir(), "naturevibes-uploads")
+    ? path.join(os.tmpdir(), "urbanvibes-uploads")
     : path.resolve("uploads");
 
 try {

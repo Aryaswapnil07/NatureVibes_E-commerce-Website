@@ -30,8 +30,8 @@ const adminAuth = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      issuer: "naturevibes-api",
-      audience: "naturevibes-admin",
+      issuer: "urbanvibes-api",
+      audience: "urbanvibes-admin",
     });
 
     const adminEmail = getEnvValue(process.env.ADMIN_EMAIL).toLowerCase();

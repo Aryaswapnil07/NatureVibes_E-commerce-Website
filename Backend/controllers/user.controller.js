@@ -19,8 +19,8 @@ const createToken = ({ id, role = "customer" }) => {
     process.env.JWT_SECRET,
     {
       expiresIn: JWT_EXPIRES_IN,
-      issuer: "naturevibes-api",
-      audience: "naturevibes-client",
+      issuer: "urbanvibes-api",
+      audience: "urbanvibes-client",
     }
   );
 };
@@ -36,8 +36,8 @@ const createAdminToken = ({ email }) => {
     process.env.JWT_SECRET,
     {
       expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || "12h",
-      issuer: "naturevibes-api",
-      audience: "naturevibes-admin",
+      issuer: "urbanvibes-api",
+      audience: "urbanvibes-admin",
     }
   );
 };
