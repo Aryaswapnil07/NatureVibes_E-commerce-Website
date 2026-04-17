@@ -53,19 +53,19 @@ const resolveMongoUri = () => {
   try {
     const parsedUri = new URL(rawUri);
     if (!parsedUri.pathname || parsedUri.pathname === "/") {
-      parsedUri.pathname = "/NatureVibes";
+      parsedUri.pathname = "/UrbanVibes";
     }
     return parsedUri.toString();
   } catch {
-    if (/\/NatureVibes(?:\?|$)/.test(rawUri)) {
+    if (/\/UrbanVibes(?:\?|$)/.test(rawUri)) {
       return rawUri;
     }
 
     const [baseUri, queryString] = rawUri.split("?");
     const normalizedBase = baseUri.replace(/\/+$/, "");
     return queryString
-      ? `${normalizedBase}/NatureVibes?${queryString}`
-      : `${normalizedBase}/NatureVibes`;
+      ? `${normalizedBase}/UrbanVibes?${queryString}`
+      : `${normalizedBase}/UrbanVibes`;
   }
 };
 

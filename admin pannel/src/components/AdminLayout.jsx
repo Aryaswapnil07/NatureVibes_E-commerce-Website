@@ -31,7 +31,7 @@ const AdminLayout = ({ onLogout }) => {
         }`}
       >
         <div className="flex h-16 items-center border-b border-gray-200 px-5">
-          <p className="text-lg font-semibold">NatureVibes Admin</p>
+          <p className="text-lg font-semibold">UrbanVibes Admin</p>
         </div>
 
         <nav className="space-y-1 p-3">

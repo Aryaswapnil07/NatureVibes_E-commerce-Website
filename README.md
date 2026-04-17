@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="./docs/naturevibes-logo.svg" alt="NatureVibes logo" width="860" />
-  <h1>NatureVibes</h1>
+  <img src="./docs/urbanvibes-logo.svg" alt="UrbanVibes logo" width="860" />
+  <h1>UrbanVibes</h1>
   <p><strong>Professional plant commerce platform</strong> built as a full-stack monorepo with a customer storefront, admin workspace, and production-style REST API.</p>
   <p>
     <a href="#overview">Overview</a> &bull;
@@ -22,7 +22,7 @@
 
 ## Overview
 
-NatureVibes is a plant-focused ecommerce system split into three clear surfaces:
+UrbanVibes is a plant-focused ecommerce system split into three clear surfaces:
 
 - `frontend/` for the customer shopping experience
 - `Backend/` for authentication, catalog, addresses, orders, and Stripe flows
@@ -92,7 +92,7 @@ The README has been rebuilt as a cleaner project page with a custom brand mark, 
 ## Workspace
 
 ```text
-NatureVibes/
+UrbanVibes/
 |-- frontend/
 |-- Backend/
 |-- admin pannel/
@@ -164,7 +164,7 @@ VITE_API_BASE_URL=http://localhost:9000
 Important details:
 
 - `PORT` should stay `9000` unless both frontend apps are updated to match.
-- `MONGODB_URI` can be a base URI or a full database URI. If the database name is missing, the backend appends `/NatureVibes`.
+- `MONGODB_URI` can be a base URI or a full database URI. If the database name is missing, the backend appends `/UrbanVibes`.
 - CORS currently allows `FRONTEND_URL`, `ADMIN_URL`, and `CLIENT_URL`.
 - Stripe variables are only required if checkout is enabled.
 - `ADMIN_EMAIL` and `ADMIN_PASSWORD` control admin login.

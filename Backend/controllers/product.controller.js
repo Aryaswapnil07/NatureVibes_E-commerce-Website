@@ -296,7 +296,7 @@ const buildProductPayload = async ({ body, files, existingProduct = null }) => {
       body.sku !== undefined
         ? normalizeSku(body.sku)
         : normalizeSku(existingProduct?.sku),
-    brand: sanitizeText(body.brand, existingProduct?.brand || "NatureVibes"),
+    brand: sanitizeText(body.brand, existingProduct?.brand || "UrbanVibes"),
     description: nextDescription,
     shortDescription: sanitizeText(
       body.shortDescription,

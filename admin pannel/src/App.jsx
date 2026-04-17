@@ -8,7 +8,7 @@ import Login from "./pages/Login";
 import Orders from "./pages/Orders";
 import ProductList from "./pages/list";
 
-const TOKEN_KEY = "naturevibes_admin_token";
+const TOKEN_KEY = "urbanvibes_admin_token";
 
 const App = () => {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
