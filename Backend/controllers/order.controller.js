@@ -36,8 +36,206 @@ const sanitizeEmail = (value = "") => sanitizeText(value).toLowerCase();
 const normalizeLookupName = (value = "") => sanitizeText(value).toLowerCase();
 const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const getVariantLabel = (variant = {}) =>
+  sanitizeText(variant.size || variant.name || variant.potSize);
+
+const normalizeProductVariants = (variants = []) =>
+  Array.isArray(variants)
+    ? variants
+        .map((variant = {}) => {
+          const size = getVariantLabel(variant);
+          const price = Number(variant.price || 0);
+          const discountedPrice = Number(variant.discountedPrice || 0);
+          const currentPrice =
+            discountedPrice > 0 && discountedPrice < price ? discountedPrice : price;
+
+          if (!size || !Number.isFinite(price) || price <= 0) {
+            return null;
+          }
+
+          return {
+            ...variant,
+            size,
+            price,
+            discountedPrice,
+            currentPrice,
+            stock: Number(variant.stock ?? 0),
+          };
+        })
+        .filter(Boolean)
+    : [];
+
 const getProductUnitPrice = (product = {}) =>
   Number(product.discountedPrice > 0 ? product.discountedPrice : product.price);
+
+const syncProductInventorySummary = (product = {}) => {
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+
+  if (variants.length > 0) {
+    const totalStock = variants.reduce(
+      (total, variant) => total + Math.max(0, Number(variant?.stock || 0)),
+      0
+    );
+
+    product.hasVariants = true;
+    product.stock = totalStock;
+    product.isInStock = totalStock > 0;
+    return;
+  }
+
+  product.hasVariants = false;
+  const stock = Math.max(0, Number(product.stock || 0));
+  product.stock = stock;
+  product.isInStock = stock > 0;
+};
+
+const findMatchingVariant = (product = {}, variantSize = "") => {
+  if (!Array.isArray(product.variants) || !product.variants.length) {
+    return null;
+  }
+
+  const normalizedVariantSize = normalizeLookupName(variantSize);
+  if (!normalizedVariantSize) {
+    return null;
+  }
+
+  return (
+    product.variants.find(
+      (variant) => normalizeLookupName(getVariantLabel(variant)) === normalizedVariantSize
+    ) || null
+  );
+};
+
+const applyInventoryChangeToProduct = ({ product, item, action }) => {
+  const quantity = Number(item?.quantity || 0);
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return;
+  }
+
+  const isReserveAction = action === "reserve";
+  const variantSize = sanitizeText(item?.variantSize);
+  const delta = isReserveAction ? -quantity : quantity;
+
+  const singleVariantFallback =
+    !variantSize && Array.isArray(product.variants) && product.variants.length === 1
+      ? product.variants[0]
+      : null;
+
+  if (variantSize || singleVariantFallback) {
+    const matchedVariant = singleVariantFallback || findMatchingVariant(product, variantSize);
+
+    if (!matchedVariant) {
+      if (isReserveAction) {
+        throw new Error(
+          `${product.name} no longer has the selected size "${variantSize}". Please update your cart.`
+        );
+      }
+      return;
+    }
+
+    const matchedVariantLabel = getVariantLabel(matchedVariant) || variantSize;
+    const currentVariantStock = Math.max(0, Number(matchedVariant.stock || 0));
+    const nextVariantStock = currentVariantStock + delta;
+
+    if (isReserveAction && nextVariantStock < 0) {
+      throw new Error(
+        `${product.name} (${matchedVariantLabel}) is out of stock or has insufficient quantity`
+      );
+    }
+
+    matchedVariant.stock = Math.max(0, nextVariantStock);
+    syncProductInventorySummary(product);
+    return;
+  }
+
+  if (Array.isArray(product.variants) && product.variants.length > 0) {
+    if (isReserveAction) {
+      throw new Error(
+        `${product.name} requires a size selection. Please update your cart before checkout.`
+      );
+    }
+
+    return;
+  }
+
+  const currentStock = Math.max(0, Number(product.stock || 0));
+  const nextStock = currentStock + delta;
+
+  if (isReserveAction && nextStock < 0) {
+    throw new Error(`${product.name} is out of stock or has insufficient quantity`);
+  }
+
+  product.stock = Math.max(0, nextStock);
+  product.isInStock = product.stock > 0;
+};
+
+const rollbackInventoryChanges = async (items = []) => {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const appliedItem = items[index];
+
+    if (!mongoose.Types.ObjectId.isValid(appliedItem.productId)) {
+      continue;
+    }
+
+    try {
+      const product = await Product.findById(appliedItem.productId);
+      if (!product) {
+        continue;
+      }
+
+      applyInventoryChangeToProduct({
+        product,
+        item: {
+          quantity: appliedItem.quantity,
+          variantSize: appliedItem.variantSize,
+        },
+        action: "release",
+      });
+      await product.save();
+    } catch {
+      // Best effort rollback for partial inventory reservations.
+    }
+  }
+};
+
+const applyInventoryChanges = async ({ items = [], action }) => {
+  const appliedItems = [];
+
+  try {
+    for (const item of items) {
+      const productId = sanitizeText(item?.product);
+      if (!mongoose.Types.ObjectId.isValid(productId)) {
+        continue;
+      }
+
+      const product = await Product.findById(productId);
+      if (!product || product.isDeleted || product.isActive === false) {
+        if (action === "reserve") {
+          throw new Error(
+            item?.name
+              ? `${item.name} is unavailable. Please remove it and add it again from the catalog.`
+              : "One or more products are unavailable. Please refresh cart."
+          );
+        }
+        continue;
+      }
+
+      applyInventoryChangeToProduct({ product, item, action });
+      await product.save();
+
+      appliedItems.push({
+        productId,
+        quantity: Number(item.quantity || 0),
+        variantSize: sanitizeText(item.variantSize),
+      });
+    }
+  } catch (error) {
+    if (action === "reserve" && appliedItems.length > 0) {
+      await rollbackInventoryChanges(appliedItems);
+    }
+    throw error;
+  }
+};
 
 const sanitizeAddress = (address = {}, fallbackCustomer = {}) => ({
   fullName: sanitizeText(address.fullName || fallbackCustomer.name),
@@ -100,6 +298,15 @@ const resolveRequestedPrice = (item = {}) => {
 const resolveRequestedName = (item = {}) =>
   sanitizeText(item.name || item.title || item.productName || item.product?.name);
 
+const resolveRequestedVariantSize = (item = {}) =>
+  sanitizeText(
+    item.variantSize ||
+      item.size ||
+      item.variant?.size ||
+      item.option ||
+      item.selectedSize
+  );
+
 const resolveRequestedImage = (item = {}) =>
   sanitizeText(
     item.image ||
@@ -126,6 +333,7 @@ const normalizeOrderItems = (items = []) => {
       quantity,
       name,
       price,
+      variantSize: resolveRequestedVariantSize(item),
       image,
       isValid,
     };
@@ -189,7 +397,7 @@ const buildOrderInput = async (req) => {
           isDeleted: false,
           isPublished: true,
           isActive: true,
-        }).select("_id name images price discountedPrice stock isInStock")
+        }).select("_id name images price discountedPrice stock isInStock variants")
       : Promise.resolve([]),
     legacyItemNames.length
       ? Product.find({
@@ -199,7 +407,7 @@ const buildOrderInput = async (req) => {
           $or: legacyItemNames.map((name) => ({
             name: new RegExp(`^${escapeRegex(name)}$`, "i"),
           })),
-        }).select("_id name images price discountedPrice stock isInStock")
+        }).select("_id name images price discountedPrice stock isInStock variants")
       : Promise.resolve([]),
   ]);
 
@@ -257,17 +465,48 @@ const buildOrderInput = async (req) => {
       };
     }
 
-    const availableStock = Number(product.stock || 0);
-    if (!product.isInStock || availableStock < item.quantity) {
+    const productVariants = normalizeProductVariants(product.variants);
+    const matchedVariant = item.variantSize
+      ? productVariants.find(
+          (variant) => normalizeLookupName(variant.size) === normalizeLookupName(item.variantSize)
+        ) || null
+      : productVariants.length === 1
+        ? productVariants[0]
+        : null;
+
+    if (productVariants.length > 0 && !matchedVariant) {
       return {
         error: {
           status: 400,
-          message: `${product.name} is out of stock or has insufficient quantity`,
+          message: item.variantSize
+            ? `${product.name} no longer has the selected size "${item.variantSize}". Please update your cart.`
+            : `${product.name} has size-specific pricing. Please select a size and add it to cart again.`,
         },
       };
     }
 
-    const unitPrice = getProductUnitPrice(product);
+    const availableStock = matchedVariant
+      ? Number(matchedVariant.stock || 0)
+      : Number(product.stock || 0);
+
+    const isAvailable = matchedVariant
+      ? availableStock >= item.quantity
+      : product.isInStock && availableStock >= item.quantity;
+
+    if (!isAvailable) {
+      return {
+        error: {
+          status: 400,
+          message: matchedVariant
+            ? `${product.name} (${matchedVariant.size}) is out of stock or has insufficient quantity`
+            : `${product.name} is out of stock or has insufficient quantity`,
+        },
+      };
+    }
+
+    const unitPrice = matchedVariant
+      ? Number(matchedVariant.currentPrice || 0)
+      : getProductUnitPrice(product);
 
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
       return {
@@ -281,6 +520,7 @@ const buildOrderInput = async (req) => {
     finalItems.push({
       product: product._id,
       name: product.name,
+      variantSize: matchedVariant?.size || "",
       image: product.images?.find((entry) => entry?.isPrimary)?.url ||
         product.images?.[0]?.url ||
         item.image ||
@@ -322,6 +562,9 @@ const buildOrderInput = async (req) => {
   const requestedAddress = req.body?.address || {};
   const requestedAddressId = String(req.body?.addressId || "").trim();
   const selectedAddress = requestedAddressId ? user.addresses?.id(requestedAddressId) : null;
+  const requestedCustomerEmail = sanitizeEmail(
+    req.body?.customer?.email || requestedAddress.email || user.email
+  );
   const finalAddress = getSelectedAddress({
     requestedAddress,
     selectedAddress,
@@ -344,7 +587,7 @@ const buildOrderInput = async (req) => {
       address: finalAddress,
       customer: {
         name: sanitizeText(user.name || finalAddress.fullName),
-        email: sanitizeEmail(user.email),
+        email: requestedCustomerEmail,
         phone: sanitizeText(user.phone || finalAddress.phone),
       },
     },
@@ -384,6 +627,20 @@ const placeOrder = async (req, res) => {
       paymentStatus,
     });
 
+    try {
+      await applyInventoryChanges({
+        items: order.items,
+        action: "reserve",
+      });
+
+      order.inventoryReserved = true;
+      order.inventoryAdjustedAt = new Date();
+      await order.save();
+    } catch (inventoryError) {
+      await Order.findByIdAndDelete(order._id).catch(() => null);
+      throw inventoryError;
+    }
+
     return res.status(201).json({
       success: true,
       message: "Order placed successfully",
@@ -420,53 +677,78 @@ const createStripeCheckoutSession = async (req, res) => {
       paymentStatus: "pending",
     });
 
-    const lineItems = data.items.map((item) => {
-      const productData = {
-        name: item.name,
-      };
+    let inventoryReserved = false;
 
-      if (isLikelyPublicUrl(item.image)) {
-        productData.images = [item.image];
+    try {
+      await applyInventoryChanges({
+        items: order.items,
+        action: "reserve",
+      });
+      inventoryReserved = true;
+
+      order.inventoryReserved = true;
+      order.inventoryAdjustedAt = new Date();
+      await order.save();
+
+      const lineItems = data.items.map((item) => {
+        const productData = {
+          name: item.variantSize ? `${item.name} (${item.variantSize})` : item.name,
+        };
+
+        if (isLikelyPublicUrl(item.image)) {
+          productData.images = [item.image];
+        }
+
+        return {
+          quantity: item.quantity,
+          price_data: {
+            currency: "inr",
+            unit_amount: Math.round(Number(item.price) * 100),
+            product_data: productData,
+          },
+        };
+      });
+
+      const clientBaseUrl = resolveClientBaseUrl(req);
+      const encodedOrderNumber = encodeURIComponent(order.orderNumber);
+      const session = await stripeClient.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        line_items: lineItems,
+        customer_email: data.customer.email || undefined,
+        metadata: {
+          orderId: String(order._id),
+          orderNumber: order.orderNumber,
+        },
+        success_url: `${clientBaseUrl}/success?orderId=${order._id}&orderNumber=${encodedOrderNumber}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${clientBaseUrl}/checkout?payment=cancelled&orderId=${order._id}&orderNumber=${encodedOrderNumber}`,
+      });
+
+      order.stripeSessionId = session.id || "";
+      if (session.payment_intent) {
+        order.stripePaymentIntentId = String(session.payment_intent);
+      }
+      await order.save();
+
+      return res.status(201).json({
+        success: true,
+        message: "Stripe checkout initiated",
+        sessionId: session.id,
+        checkoutUrl: session.url,
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+      });
+    } catch (error) {
+      if (inventoryReserved) {
+        await applyInventoryChanges({
+          items: order.items,
+          action: "release",
+        }).catch(() => null);
       }
 
-      return {
-        quantity: item.quantity,
-        price_data: {
-          currency: "inr",
-          unit_amount: Math.round(Number(item.price) * 100),
-          product_data: productData,
-        },
-      };
-    });
-
-    const clientBaseUrl = resolveClientBaseUrl(req);
-    const session = await stripeClient.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      customer_email: data.customer.email || undefined,
-      metadata: {
-        orderId: String(order._id),
-        orderNumber: order.orderNumber,
-      },
-      success_url: `${clientBaseUrl}/success?orderId=${order._id}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${clientBaseUrl}/checkout?payment=cancelled&orderId=${order._id}`,
-    });
-
-    order.stripeSessionId = session.id || "";
-    if (session.payment_intent) {
-      order.stripePaymentIntentId = String(session.payment_intent);
+      await Order.findByIdAndDelete(order._id).catch(() => null);
+      throw error;
     }
-    await order.save();
-
-    return res.status(201).json({
-      success: true,
-      message: "Stripe checkout initiated",
-      sessionId: session.id,
-      checkoutUrl: session.url,
-      orderId: order._id,
-      orderNumber: order.orderNumber,
-    });
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -509,6 +791,19 @@ const handleStripeWebhook = async (req, res) => {
 
       const order = await Order.findOne(filter);
       if (order) {
+        if (!order.inventoryReserved) {
+          await applyInventoryChanges({
+            items: order.items,
+            action: "reserve",
+          });
+          order.inventoryReserved = true;
+          order.inventoryAdjustedAt = new Date();
+        }
+
+        if (order.status === "cancelled") {
+          order.status = "placed";
+        }
+
         order.paymentMethod = "stripe";
         order.paymentStatus = "paid";
         order.paidAt = new Date();
@@ -534,17 +829,29 @@ const handleStripeWebhook = async (req, res) => {
           ? { _id: metadataOrderId }
           : { stripeSessionId: session?.id || "" };
 
-      await Order.findOneAndUpdate(
-        {
-          ...filter,
-          paymentStatus: { $ne: "paid" },
-        },
-        {
-          paymentMethod: "stripe",
-          paymentStatus: "failed",
-          ...(session?.id ? { stripeSessionId: session.id } : {}),
+      const order = await Order.findOne({
+        ...filter,
+        paymentStatus: { $ne: "paid" },
+      });
+
+      if (order) {
+        if (order.inventoryReserved) {
+          await applyInventoryChanges({
+            items: order.items,
+            action: "release",
+          });
+          order.inventoryReserved = false;
+          order.inventoryAdjustedAt = new Date();
         }
-      );
+
+        order.paymentMethod = "stripe";
+        order.paymentStatus = "failed";
+        order.status = "cancelled";
+        if (session?.id) {
+          order.stripeSessionId = session.id;
+        }
+        await order.save();
+      }
     }
 
     return res.json({ received: true });
@@ -580,6 +887,70 @@ const getUserOrders = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Unable to load user orders",
+    });
+  }
+};
+
+const cancelPendingStripeOrder = async (req, res) => {
+  try {
+    const orderId = sanitizeText(req.body?.orderId || req.query?.orderId);
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid orderId is required",
+      });
+    }
+
+    const order = await Order.findOne({
+      _id: orderId,
+      user: req.userId,
+      paymentMethod: "stripe",
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Stripe order not found",
+      });
+    }
+
+    if (order.paymentStatus === "paid") {
+      return res.status(409).json({
+        success: false,
+        message: "This order is already paid and can no longer be cancelled.",
+      });
+    }
+
+    if (stripeClient && order.stripeSessionId) {
+      await stripeClient.checkout.sessions.expire(order.stripeSessionId).catch(() => null);
+    }
+
+    if (order.inventoryReserved) {
+      await applyInventoryChanges({
+        items: order.items,
+        action: "release",
+      });
+      order.inventoryReserved = false;
+      order.inventoryAdjustedAt = new Date();
+    }
+
+    order.status = "cancelled";
+    if (order.paymentStatus !== "refunded") {
+      order.paymentStatus = "failed";
+    }
+
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: "Stripe checkout cancelled successfully",
+      order,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to cancel Stripe checkout",
     });
   }
 };
@@ -648,12 +1019,37 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    const order = await Order.findByIdAndUpdate(orderId, updates, { new: true });
+    const order = await Order.findById(orderId);
     if (!order) {
       return res
         .status(404)
         .json({ success: false, message: "Order not found" });
     }
+
+    const nextStatus = updates.status || order.status;
+    const isCancellingOrder = order.status !== "cancelled" && nextStatus === "cancelled";
+    const isReopeningOrder = order.status === "cancelled" && nextStatus !== "cancelled";
+
+    if (isCancellingOrder && order.inventoryReserved) {
+      await applyInventoryChanges({
+        items: order.items,
+        action: "release",
+      });
+      updates.inventoryReserved = false;
+      updates.inventoryAdjustedAt = new Date();
+    }
+
+    if (isReopeningOrder && !order.inventoryReserved) {
+      await applyInventoryChanges({
+        items: order.items,
+        action: "reserve",
+      });
+      updates.inventoryReserved = true;
+      updates.inventoryAdjustedAt = new Date();
+    }
+
+    Object.assign(order, updates);
+    await order.save();
 
     return res.json({
       success: true,
@@ -726,6 +1122,7 @@ const getOrderSummary = async (req, res) => {
 };
 
 export {
+  cancelPendingStripeOrder,
   createStripeCheckoutSession,
   getOrderSummary,
   getUserOrders,

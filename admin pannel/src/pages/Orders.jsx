@@ -25,6 +25,7 @@ const paymentMethodLabels = {
   upi: "UPI",
   card: "Card",
   netbanking: "Net Banking",
+  stripe: "Stripe",
 };
 
 const formatCurrency = (value) =>
@@ -284,7 +285,10 @@ const Orders = ({ token }) => {
                       <p className="mt-1 max-w-xs text-xs text-gray-500">
                         {(order.items || [])
                           .slice(0, 2)
-                          .map((item) => `${item.name} x${item.quantity}`)
+                          .map(
+                            (item) =>
+                              `${item.name}${item.variantSize ? ` (${item.variantSize})` : ""} x${item.quantity}`
+                          )
                           .join(", ") || "No items"}
                       </p>
                     </td>
