@@ -2,6 +2,7 @@ import express from "express";
 import adminAuth from "../middleware/adminAuth.js";
 import userAuth from "../middleware/userAuth.js";
 import {
+  cancelPendingStripeOrder,
   createStripeCheckoutSession,
   getOrderSummary,
   getUserOrders,
@@ -18,6 +19,7 @@ orderRouter.post(
   userAuth,
   createStripeCheckoutSession
 );
+orderRouter.post("/stripe/cancel", userAuth, cancelPendingStripeOrder);
 orderRouter.get("/list", adminAuth, listOrders);
 orderRouter.get("/summary", adminAuth, getOrderSummary);
 orderRouter.get("/my", userAuth, getUserOrders);

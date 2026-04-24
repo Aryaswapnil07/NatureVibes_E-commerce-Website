@@ -8,6 +8,7 @@ const orderItemSchema = new mongoose.Schema(
       required: false,
     },
     name: { type: String, required: true, trim: true },
+    variantSize: { type: String, default: "", trim: true },
     image: { type: String, default: "" },
     price: { type: Number, required: true },
     quantity: { type: Number, required: true, min: 1 },
@@ -65,6 +66,8 @@ const orderSchema = new mongoose.Schema(
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
+    inventoryReserved: { type: Boolean, default: false },
+    inventoryAdjustedAt: { type: Date, default: null },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
