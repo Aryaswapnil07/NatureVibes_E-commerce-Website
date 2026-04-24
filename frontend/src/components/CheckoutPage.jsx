@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   FiTruck,
@@ -22,8 +22,15 @@ const paymentOptions = [
   { value: "cod", label: "Cash on Delivery (COD)", icon: FiDollarSign },
   { value: "stripe", label: "Card / UPI via Stripe", icon: FiCreditCard },
 ];
+const EMPTY_ADDRESSES = [];
 
 const normalizeText = (value) => String(value || "").trim();
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
 
 const resolveCartItemProductId = (item = {}) => {
   const candidateIds = [
@@ -59,7 +66,10 @@ const buildOrderItem = (item = {}) => {
   const productId = resolveCartItemProductId(item);
   const quantity = resolveCartItemQuantity(item);
   const price = resolveCartItemPrice(item);
-  const name = normalizeText(item.name || item.title || item.product?.name);
+  const name = normalizeText(
+    item.baseName || item.productBaseName || item.name || item.title || item.product?.name
+  );
+  const variantSize = normalizeText(item.variantSize || item.size || item.variant?.size);
   const image = normalizeText(item.image || item.thumbnail || item.product?.image);
 
   const hasValidQuantity = Number.isInteger(quantity) && quantity > 0;
@@ -74,6 +84,7 @@ const buildOrderItem = (item = {}) => {
     ...(productId ? { productId, backendId: productId, id: productId } : {}),
     ...(name ? { name } : {}),
     ...(Number.isFinite(price) ? { price } : {}),
+    ...(variantSize ? { variantSize } : {}),
     ...(image ? { image } : {}),
     quantity,
   };
@@ -90,10 +101,26 @@ const readApiResponse = async (response) => {
   return { payload: null, rawText };
 };
 
+const getDefaultSavedAddress = (addresses = []) =>
+  Array.isArray(addresses)
+    ? addresses.find((entry) => entry?.isDefault) || addresses[0] || null
+    : null;
+
+const buildAddressState = ({ userProfile = null, selectedAddress = null } = {}) => ({
+  fullName: normalizeText(selectedAddress?.fullName || userProfile?.name),
+  email: normalizeText(userProfile?.email),
+  phone: normalizeText(selectedAddress?.phone || userProfile?.phone),
+  pincode: normalizeText(selectedAddress?.pincode),
+  city: normalizeText(selectedAddress?.city),
+  state: normalizeText(selectedAddress?.state),
+  streetAddress: normalizeText(selectedAddress?.streetAddress),
+});
+
 const CheckoutPage = ({
   cartItems,
   totalAmount,
   clearCart,
+  userProfile,
   userToken,
   onRequireLogin,
 }) => {
@@ -111,34 +138,136 @@ const CheckoutPage = ({
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState("");
 
   const isAuthenticated = Boolean(userToken);
+  const savedAddresses = Array.isArray(userProfile?.addresses)
+    ? userProfile.addresses
+    : EMPTY_ADDRESSES;
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    if (searchParams.get("payment") === "cancelled") {
-      setError("Payment was cancelled. You can retry checkout.");
+    if (!userProfile) {
+      return;
     }
-  }, [location.search]);
+
+    const defaultSavedAddress = getDefaultSavedAddress(savedAddresses);
+    setSelectedAddressId(defaultSavedAddress?._id ? String(defaultSavedAddress._id) : "");
+    setAddress(buildAddressState({ userProfile, selectedAddress: defaultSavedAddress }));
+  }, [savedAddresses, userProfile]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const cancelledOrderId = normalizeText(searchParams.get("orderId"));
+
+    if (searchParams.get("payment") !== "cancelled") {
+      return;
+    }
+
+    let isMounted = true;
+
+    const cancelPendingStripeCheckout = async () => {
+      if (!cancelledOrderId || !objectIdRegex.test(cancelledOrderId)) {
+        if (isMounted) {
+          setError("Payment was cancelled. You can retry checkout.");
+        }
+        return;
+      }
+
+      if (!userToken) {
+        if (isMounted) {
+          setError("Payment was cancelled. Please login again before retrying checkout.");
+          onRequireLogin?.();
+        }
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/orders/stripe/cancel`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: userToken,
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ orderId: cancelledOrderId }),
+        });
+        const { payload, rawText } = await readApiResponse(response);
+
+        if (!response.ok || !payload?.success) {
+          if (response.status === 401) {
+            onRequireLogin?.();
+          }
+
+          throw new Error(
+            payload?.message || rawText || "Payment was cancelled. Please try checkout again."
+          );
+        }
+
+        if (isMounted) {
+          setError("Payment was cancelled. Reserved stock was released and you can retry checkout.");
+        }
+      } catch (cancelError) {
+        if (isMounted) {
+          setError(cancelError.message || "Payment was cancelled. Please try checkout again.");
+        }
+      }
+    };
+
+    cancelPendingStripeCheckout();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [location.search, onRequireLogin, userToken]);
 
   const handleInputChange = (event) => {
+    if (selectedAddressId) {
+      setSelectedAddressId("");
+    }
+
     setAddress((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+  };
+
+  const handleSavedAddressChange = (event) => {
+    const nextAddressId = event.target.value;
+    setSelectedAddressId(nextAddressId);
+
+    if (!nextAddressId) {
+      setAddress((prev) => ({
+        ...prev,
+        email: normalizeText(userProfile?.email || prev.email),
+      }));
+      return;
+    }
+
+    const matchedAddress = savedAddresses.find(
+      (entry) => String(entry?._id || "") === String(nextAddressId)
+    );
+
+    if (matchedAddress) {
+      setAddress(buildAddressState({ userProfile, selectedAddress: matchedAddress }));
+    }
   };
 
   const buildOrderPayload = () => ({
     items: cartItems.map(buildOrderItem).filter(Boolean),
     amount: Number(totalAmount || 0),
+    ...(selectedAddressId ? { addressId: selectedAddressId } : {}),
     address: {
       fullName: address.fullName,
+      email: address.email,
       phone: address.phone,
       streetAddress: address.streetAddress,
       city: address.city,
       state: address.state,
       pincode: address.pincode,
+    },
+    customer: {
+      email: address.email,
     },
   });
 
@@ -264,6 +393,30 @@ const CheckoutPage = ({
             </p>
           ) : null}
 
+          {savedAddresses.length ? (
+            <>
+              <div className="input-group full-width">
+                <label className="label-with-icon">
+                  <FiHome className="label-icon" /> Saved Address
+                </label>
+                <select value={selectedAddressId} onChange={handleSavedAddressChange}>
+                  <option value="">Use a new address</option>
+                  {savedAddresses.map((savedAddress) => (
+                    <option key={savedAddress._id} value={savedAddress._id}>
+                      {(savedAddress.label || "Address").trim() || "Address"}
+                      {savedAddress.isDefault ? " (Default)" : ""}
+                      {savedAddress.city ? ` - ${savedAddress.city}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="saved-address-note">
+                Selecting a saved address will autofill the form. Editing any field switches back
+                to a custom address for this checkout.
+              </p>
+            </>
+          ) : null}
+
           <div className="address-input-grid">
             <div className="input-group full-width">
               <label className="label-with-icon">
@@ -365,9 +518,12 @@ const CheckoutPage = ({
                 <img src={item.image} alt={item.name} />
                 <div className="mini-info">
                   <span className="mini-name">{item.name}</span>
-                  <span className="mini-qty">Qty: {item.quantity}</span>
+                  <span className="mini-qty">
+                    Qty: {item.quantity}
+                    {item.variantSize ? `, Size: ${item.variantSize}` : ""}
+                  </span>
                 </div>
-                <span className="mini-price">Rs {item.price * item.quantity}</span>
+                <span className="mini-price">{formatCurrency(item.price * item.quantity)}</span>
               </div>
             ))}
           </div>
@@ -375,7 +531,7 @@ const CheckoutPage = ({
           <div className="summary-pricing">
             <div className="price-row">
               <span>Subtotal</span>
-              <span>Rs {totalAmount}</span>
+              <span>{formatCurrency(totalAmount)}</span>
             </div>
             <div className="price-row">
               <span>Shipping</span>
@@ -383,7 +539,7 @@ const CheckoutPage = ({
             </div>
             <div className="price-row total-final">
               <span>Total Payable</span>
-              <span>Rs {totalAmount}</span>
+              <span>{formatCurrency(totalAmount)}</span>
             </div>
           </div>
 
@@ -437,7 +593,7 @@ const CheckoutPage = ({
           <button
             className="confirm-pay-btn"
             onClick={handlePlaceOrder}
-            disabled={isPlacing || !isAuthenticated}
+            disabled={isPlacing}
           >
             <FiCreditCard size={20} className="btn-icon" />{" "}
             {isPlacing

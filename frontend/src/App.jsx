@@ -16,6 +16,7 @@ import ProductInfoPage from "./components/ProductInfo";
 import CheckoutPage from "./components/CheckoutPage";
 import SuccessPage from "./components/SuccessPage";
 import UserProfile from "./components/UserProfile";
+import { getProductPriceInfo } from "./utils/productPricing";
 
 const USER_TOKEN_KEY = "natureVibesUserToken";
 
@@ -36,10 +37,7 @@ const normalizeCatalogProduct = (product, fallbackIndex = 0) => {
   const primaryImage = product.images?.find((item) => item?.isPrimary)?.url;
   const firstImage = product.images?.[0]?.url;
   const image = primaryImage || firstImage || product.image || "";
-
-  const regularPrice = Number(product.price || 0);
-  const discountedPrice = Number(product.discountedPrice || 0);
-  const price = discountedPrice > 0 ? discountedPrice : regularPrice;
+  const priceInfo = getProductPriceInfo(product);
 
   let badge = "";
   if (product.isBestSeller) badge = "Best Seller";
@@ -63,11 +61,17 @@ const normalizeCatalogProduct = (product, fallbackIndex = 0) => {
     productType: product.productType || "",
     brand: product.brand || "UrbanVibes",
     sku: product.sku || "",
-    price: Number.isFinite(price) ? price : 0,
-    originalPrice: Number.isFinite(regularPrice) ? regularPrice : 0,
-    discountedPrice: Number.isFinite(discountedPrice) ? discountedPrice : 0,
-    stock: Number(product.stock ?? 0),
-    isInStock: product.isInStock !== false,
+    price: Number.isFinite(priceInfo.lowestPrice) ? priceInfo.lowestPrice : 0,
+    originalPrice: Number.isFinite(priceInfo.lowestRegularPrice)
+      ? priceInfo.lowestRegularPrice
+      : 0,
+    discountedPrice: Number.isFinite(priceInfo.lowestDiscountedPrice)
+      ? priceInfo.lowestDiscountedPrice
+      : 0,
+    stock: priceInfo.hasVariants ? Number(priceInfo.totalStock || 0) : Number(product.stock ?? 0),
+    isInStock: priceInfo.hasVariants
+      ? Boolean(priceInfo.hasAnyInStock)
+      : Boolean(priceInfo.isInStock),
     isPublished: product.isPublished !== false,
     tags: Array.isArray(product.tags) ? product.tags : [],
     averageRating: Number(product.averageRating || 0),
@@ -77,6 +81,11 @@ const normalizeCatalogProduct = (product, fallbackIndex = 0) => {
     plantDetails: product.plantDetails || null,
     shipping: product.shipping || null,
     images: Array.isArray(product.images) ? product.images : [],
+    variants: priceInfo.variants,
+    sizeOptions: priceInfo.sizeLabels,
+    hasVariants: priceInfo.hasVariants,
+    defaultSize: priceInfo.selectedVariant?.size || "",
+    pricePrefix: priceInfo.hasVariants ? "From " : "",
     image,
     badge,
     description: product.description || "",
@@ -142,6 +151,7 @@ function App() {
   const [catalogSections, setCatalogSections] = useState([]);
   const [catalogError, setCatalogError] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [selectedSizeFilter, setSelectedSizeFilter] = useState("all");
   const [userToken, setUserToken] = useState(
     () => localStorage.getItem(USER_TOKEN_KEY) || ""
   );
@@ -237,6 +247,49 @@ function App() {
     [catalogSections]
   );
 
+  const sizeFilterOptions = useMemo(() => {
+    const sizeLabels = new Set();
+
+    catalogSections.forEach((section) => {
+      section.products.forEach((product) => {
+        (product.sizeOptions || []).forEach((size) => {
+          if (size) {
+            sizeLabels.add(size);
+          }
+        });
+      });
+    });
+
+    return Array.from(sizeLabels).sort((left, right) =>
+      left.localeCompare(right, undefined, { sensitivity: "base", numeric: true })
+    );
+  }, [catalogSections]);
+
+  const filteredCatalogSections = useMemo(() => {
+    if (selectedSizeFilter === "all") {
+      return catalogSections;
+    }
+
+    return catalogSections
+      .map((section) => ({
+        ...section,
+        products: section.products.filter((product) =>
+          (product.sizeOptions || []).includes(selectedSizeFilter)
+        ),
+      }))
+      .filter((section) => section.products.length > 0);
+  }, [catalogSections, selectedSizeFilter]);
+
+  useEffect(() => {
+    if (selectedSizeFilter === "all") {
+      return;
+    }
+
+    if (!sizeFilterOptions.includes(selectedSizeFilter)) {
+      setSelectedSizeFilter("all");
+    }
+  }, [selectedSizeFilter, sizeFilterOptions]);
+
   const totalAmount = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0),
     [cartItems]
@@ -250,11 +303,25 @@ function App() {
   }, []);
 
   const handleAddToCart = useCallback((product) => {
+    const availableStock = Number(product?.stock ?? 0);
+    if (!product?.id || !Number.isFinite(availableStock) || availableStock <= 0) {
+      return;
+    }
+
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
+        if (existing.quantity >= availableStock) {
+          return prev;
+        }
+
         return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === product.id
+            ? {
+                ...item,
+                quantity: Math.min(item.quantity + 1, availableStock),
+              }
+            : item
         );
       }
       return [...prev, { ...product, quantity: 1 }];
@@ -266,7 +333,12 @@ function App() {
       prev
         .map((item) => {
           if (item.id === id) {
-            const newQty = item.quantity + delta;
+            const stockLimit = Number(item.stock ?? 0);
+            const tentativeQty = item.quantity + delta;
+            const newQty =
+              delta > 0 && Number.isFinite(stockLimit) && stockLimit > 0
+                ? Math.min(tentativeQty, stockLimit)
+                : tentativeQty;
             return newQty > 0 ? { ...item, quantity: newQty } : null;
           }
           return item;
@@ -318,6 +390,34 @@ function App() {
                   <h2>Full Plant Catalog</h2>
                   <p>Shop category-wise plants and accessories curated for every space.</p>
                 </div>
+                {sizeFilterOptions.length > 0 ? (
+                  <div className="catalog-filter-bar">
+                    <span className="catalog-filter-label">Filter by size</span>
+                    <div className="catalog-filter-chips">
+                      <button
+                        type="button"
+                        className={`catalog-filter-chip ${
+                          selectedSizeFilter === "all" ? "active" : ""
+                        }`}
+                        onClick={() => setSelectedSizeFilter("all")}
+                      >
+                        All Sizes
+                      </button>
+                      {sizeFilterOptions.map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          className={`catalog-filter-chip ${
+                            selectedSizeFilter === size ? "active" : ""
+                          }`}
+                          onClick={() => setSelectedSizeFilter(size)}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {catalogError ? (
                   <div
                     style={{
@@ -339,13 +439,15 @@ function App() {
                   </p>
                 ) : null}
 
-                {!catalogLoading && catalogSections.length === 0 ? (
+                {!catalogLoading && filteredCatalogSections.length === 0 ? (
                   <p style={{ textAlign: "center", color: "#6c757d" }}>
-                    No products are currently available.
+                    {selectedSizeFilter === "all"
+                      ? "No products are currently available."
+                      : `No products are available in size "${selectedSizeFilter}".`}
                   </p>
                 ) : null}
 
-                {catalogSections.map((section) => (
+                {filteredCatalogSections.map((section) => (
                   <ProductSection
                     key={section.key}
                     title={section.title}
@@ -383,6 +485,7 @@ function App() {
               cartItems={cartItems}
               totalAmount={totalAmount}
               clearCart={clearCart}
+              userProfile={userProfile}
               userToken={userToken}
               onRequireLogin={handleOpenLogin}
             />

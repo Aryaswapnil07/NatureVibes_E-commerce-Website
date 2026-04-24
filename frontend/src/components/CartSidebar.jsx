@@ -63,6 +63,9 @@ const CartSidebar = ({
                   <div key={item.id} className="cart-item">
                     <div className="cart-item-info">
                       <div className="cart-item-name">{item.name}</div>
+                      {item.variantSize ? (
+                        <div className="cart-item-meta">Size: {item.variantSize}</div>
+                      ) : null}
                       <div className="cart-item-price">
                         {`\u20B9${item.price.toLocaleString("en-IN")}`}
                       </div>
@@ -72,7 +75,11 @@ const CartSidebar = ({
                         -
                       </button>
                       <div className="qty-display">{item.quantity}</div>
-                      <button className="qty-btn" onClick={() => onUpdateQty(item.id, 1)}>
+                      <button
+                        className="qty-btn"
+                        disabled={Number(item.stock ?? 0) <= item.quantity}
+                        onClick={() => onUpdateQty(item.id, 1)}
+                      >
                         +
                       </button>
                     </div>
