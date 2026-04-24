@@ -12,6 +12,7 @@ import {
 import API_BASE_URL from "../config/api";
 import RelatedProducts from "./RelatedProducts";
 import "../components/css/ProductInfo.css";
+import { createCartProductSnapshot, getProductPriceInfo } from "../utils/productPricing";
 
 const objectIdRegex = /^[a-fA-F0-9]{24}$/;
 
@@ -46,6 +47,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
 
   const backendProductId = useMemo(() => {
@@ -146,6 +148,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
 
   useEffect(() => {
     setSelectedImageIndex(0);
+    setSelectedSize("");
     setQuantity(1);
 
     if (productIdentity) {
@@ -158,23 +161,52 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
       ? selectedImageIndex
       : 0;
   const mainImage = gallery[activeImageIndex] || "";
+  const priceInfo = useMemo(
+    () => getProductPriceInfo(product || {}, selectedSize),
+    [product, selectedSize]
+  );
+  const sizeOptions = priceInfo.variants;
 
-  const currentPrice = Number(product?.discountedPrice || product?.price || 0);
-  const originalPrice =
-    Number(product?.discountedPrice || 0) > 0
-      ? Number(product?.price || 0)
-      : Number(product?.price || 0);
+  useEffect(() => {
+    if (!sizeOptions.length) {
+      if (selectedSize) {
+        setSelectedSize("");
+      }
+      return;
+    }
+
+    const nextSize =
+      sizeOptions.find((option) => option.size === selectedSize)?.size ||
+      sizeOptions.find((option) => option.isInStock)?.size ||
+      sizeOptions[0]?.size ||
+      "";
+
+    if (nextSize && nextSize !== selectedSize) {
+      setSelectedSize(nextSize);
+    }
+  }, [selectedSize, sizeOptions]);
+
+  const currentPrice = Number(priceInfo.displayPrice || 0);
+  const originalPrice = Number(priceInfo.regularPrice || 0);
   const currentPriceText = formatNumericCurrency(currentPrice);
   const hasDiscount =
-    Number(product?.discountedPrice || 0) > 0 &&
-    Number(product?.discountedPrice || 0) < Number(product?.price || 0);
+    Number(priceInfo.discountedPrice || 0) > 0 &&
+    Number(priceInfo.discountedPrice || 0) < Number(priceInfo.regularPrice || 0);
   const discountPercent = hasDiscount
     ? Math.round(
-        ((Number(product.price) - Number(product.discountedPrice)) / Number(product.price)) * 100
+        ((Number(priceInfo.regularPrice) - Number(priceInfo.discountedPrice)) /
+          Number(priceInfo.regularPrice)) *
+          100
       )
     : 0;
-  const stockCount = Number(product?.stock ?? 0);
-  const inStock = stockCount > 0 && product?.isInStock !== false;
+  const stockCount = Number(priceInfo.stock ?? product?.stock ?? 0);
+  const inStock = priceInfo.hasVariants
+    ? priceInfo.isInStock
+    : stockCount > 0 && product?.isInStock !== false;
+
+  useEffect(() => {
+    setQuantity((previousQuantity) => Math.min(previousQuantity, Math.max(stockCount, 1)));
+  }, [stockCount]);
 
   const productBadges = [
     product?.isBestSeller ? "Best Seller" : "",
@@ -209,16 +241,11 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
     if (!product) return null;
 
     return {
-      id: String(product.id || product._id || productId),
-      backendId: String(product.backendId || product._id || product.id || productId),
-      name: product.name || "Product",
-      category: product.subCategory || product.category || product.productType || "General",
-      price: Number(currentPrice || 0),
+      ...createCartProductSnapshot(product, selectedSize),
       image: mainImage || product.image || "",
       badge: productBadges[0] || "",
-      description: product.description || product.shortDescription || "",
     };
-  }, [currentPrice, mainImage, product, productBadges, productId]);
+  }, [mainImage, product, productBadges, selectedSize]);
 
   const addSelectedQuantityToCart = () => {
     if (!cartProduct || !onAddToCart || !inStock) return;
@@ -330,6 +357,36 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
               </div>
 
               <div className="purchase-card">
+                {sizeOptions.length ? (
+                  <div className="size-selector-block">
+                    <div className="size-selector-head">
+                      <p>Size</p>
+                      <span>{priceInfo.selectedVariant?.size || "-"}</span>
+                    </div>
+
+                    <div className="size-option-grid">
+                      {sizeOptions.map((option) => {
+                        const isSelected = priceInfo.selectedVariant?.size === option.size;
+
+                        return (
+                          <button
+                            key={option.size}
+                            type="button"
+                            className={`size-option-btn ${isSelected ? "selected" : ""}`}
+                            onClick={() => setSelectedSize(option.size)}
+                            disabled={!option.isInStock}
+                          >
+                            <span className="size-option-label">{option.size}</span>
+                            <span className="size-option-price">
+                              {formatCurrency(option.currentPrice)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="qty-row">
                   <p>Quantity</p>
                   <div className="qty-control">
@@ -396,6 +453,12 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
                     <span>Brand</span>
                     <strong>{product.brand || "UrbanVibes"}</strong>
                   </div>
+                  {sizeOptions.length ? (
+                    <div className="spec-item">
+                      <span>Selected Size</span>
+                      <strong>{priceInfo.selectedVariant?.size || "-"}</strong>
+                    </div>
+                  ) : null}
                   <div className="spec-item">
                     <span>SKU</span>
                     <strong>{product.sku || "-"}</strong>
