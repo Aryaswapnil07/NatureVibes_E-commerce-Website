@@ -8,7 +8,9 @@ const SuccessPage = ({ clearCart }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const order = location.state?.order;
-  const stripeOrderId = new URLSearchParams(location.search).get("orderId");
+  const searchParams = new URLSearchParams(location.search);
+  const stripeOrderId = searchParams.get("orderId");
+  const stripeOrderNumber = searchParams.get("orderNumber");
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -62,6 +64,8 @@ const SuccessPage = ({ clearCart }) => {
             <span>
               {order?.orderNumber
                 ? `Order ID: ${order.orderNumber}`
+                : stripeOrderNumber
+                ? `Order ID: ${stripeOrderNumber}`
                 : stripeOrderId
                 ? `Order Reference: ${stripeOrderId}`
                 : "Estimated Delivery: 3-5 Business Days"}
@@ -73,12 +77,12 @@ const SuccessPage = ({ clearCart }) => {
           <button className="btn-home" onClick={() => navigate('/')}>
             <Home size={18} /> Back to Home
           </button>
-          <button className="btn-track" onClick={() => navigate('/')}>
-            Track Order <ArrowRight size={18} />
+          <button className="btn-track" onClick={() => navigate('/account/orders/current')}>
+            View My Orders <ArrowRight size={18} />
           </button>
         </div>
         
-        <p className="support-text">A confirmation email has been sent to your inbox.</p>
+        <p className="support-text">You can track the latest status anytime from My Orders.</p>
       </div>
     </div>
   );
