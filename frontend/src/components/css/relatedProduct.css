@@ -89,6 +89,12 @@
     text-overflow: ellipsis;
 }
 
+.related-size-summary {
+    margin: -2px 0 10px;
+    color: #748676;
+    font-size: 0.76rem;
+}
+
 .related-price-row {
     display: flex;
     justify-content: space-between;

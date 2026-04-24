@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
 import "../components/css/relatedProduct.css";
+import { createCartProductSnapshot } from "../utils/productPricing";
 
 const RelatedProducts = ({
   allProducts = [],
@@ -56,17 +57,25 @@ const RelatedProducts = ({
               >
                 {item.name}
               </h4>
+              {item.sizeOptions?.length ? (
+                <p className="related-size-summary">
+                  Sizes: {item.sizeOptions.slice(0, 2).join(", ")}
+                  {item.sizeOptions.length > 2 ? " +" : ""}
+                </p>
+              ) : null}
               <div className="related-price-row">
                 <span className="related-price">
-                  Rs {Number(item.price || 0).toLocaleString("en-IN")}
+                  {item.pricePrefix || ""}Rs {Number(item.price || 0).toLocaleString("en-IN")}
                 </span>
                 <button
                   className="related-add-btn"
+                  disabled={!item.isInStock}
                   onClick={(event) => {
                     event.stopPropagation();
-                    onAddToCart(item);
+                    if (!item.isInStock) return;
+                    onAddToCart(createCartProductSnapshot(item));
                   }}
-                  title="Add to Cart"
+                  title={item.isInStock ? "Add to Cart" : "Out of Stock"}
                 >
                   <ShoppingCart size={18} />
                 </button>
