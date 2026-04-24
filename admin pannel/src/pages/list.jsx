@@ -10,6 +10,13 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(value || 0);
 
+const getProductSizes = (product = {}) =>
+  Array.isArray(product.variants)
+    ? product.variants
+        .map((variant) => String(variant?.size || variant?.name || variant?.potSize || "").trim())
+        .filter(Boolean)
+    : [];
+
 const ProductList = ({ token }) => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
@@ -111,13 +118,18 @@ const ProductList = ({ token }) => {
                 <th className="px-3 py-3 font-medium">Type</th>
                 <th className="px-3 py-3 font-medium">Category</th>
                 <th className="px-3 py-3 font-medium">Price</th>
+                <th className="px-3 py-3 font-medium">Sizes</th>
                 <th className="px-3 py-3 font-medium">Stock</th>
                 <th className="px-3 py-3 font-medium">Action</th>
               </tr>
             </thead>
 
             <tbody>
-              {products.map((product) => (
+              {products.map((product) => {
+                const sizeLabels = getProductSizes(product);
+                const hasSizePricing = sizeLabels.length > 0;
+
+                return (
                 <tr key={product._id} className="border-b border-gray-100">
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-3">
@@ -140,7 +152,14 @@ const ProductList = ({ token }) => {
                   </td>
                   <td className="px-3 py-3 text-gray-700">{product.productType || "-"}</td>
                   <td className="px-3 py-3 text-gray-700">{product.category || "-"}</td>
-                  <td className="px-3 py-3 text-gray-700">{formatCurrency(product.price)}</td>
+                  <td className="px-3 py-3 text-gray-700">
+                    {hasSizePricing
+                      ? `From ${formatCurrency(product.price)}`
+                      : formatCurrency(product.price)}
+                  </td>
+                  <td className="px-3 py-3 text-gray-700">
+                    {hasSizePricing ? sizeLabels.join(", ") : "-"}
+                  </td>
                   <td className="px-3 py-3 text-gray-700">{product.stock ?? 0}</td>
                   <td className="px-3 py-3">
                     <div className="flex gap-2">
@@ -162,11 +181,11 @@ const ProductList = ({ token }) => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
 
               {!products.length ? (
                 <tr>
-                  <td className="px-3 py-8 text-center text-sm text-gray-500" colSpan={6}>
+                  <td className="px-3 py-8 text-center text-sm text-gray-500" colSpan={7}>
                     No products found.
                   </td>
                 </tr>

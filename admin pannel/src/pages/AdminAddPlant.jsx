@@ -1,9 +1,15 @@
 import { useState } from "react";
 import API_BASE_URL from "../config/api";
+import SizePricingEditor from "../components/SizePricingEditor";
 import {
   CATALOG_CATEGORY_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
 } from "../constants/productOptions";
+import {
+  createEmptySizeVariant,
+  hasAnySizeVariantInput,
+  serializeSizeVariants,
+} from "../utils/sizePricing";
 import {
   formatFileSize,
   getTotalSelectedImageBytes,
@@ -17,7 +23,7 @@ const defaultCategory = CATALOG_CATEGORY_OPTIONS[0] || {
   label: "Indoor Plants",
 };
 
-const initialForm = {
+const createInitialForm = () => ({
   name: "",
   description: "",
   shortDescription: "",
@@ -34,7 +40,8 @@ const initialForm = {
   isNewArrival: false,
   isTrending: false,
   isPublished: true,
-};
+  variants: [],
+});
 
 const imageSlots = [
   { key: "image1", label: "Front View (Image 1)" },
@@ -51,12 +58,13 @@ const emptyImageFiles = {
 };
 
 const AdminAddPlant = ({ token }) => {
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(createInitialForm);
   const [imageFiles, setImageFiles] = useState(emptyImageFiles);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const totalSelectedImageBytes = getTotalSelectedImageBytes(imageFiles);
+  const hasSizeVariants = hasAnySizeVariantInput(form.variants);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -86,6 +94,29 @@ const AdminAddPlant = ({ token }) => {
     }));
   };
 
+  const handleVariantChange = (variantId, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((variant) =>
+        variant.id === variantId ? { ...variant, [field]: value } : variant
+      ),
+    }));
+  };
+
+  const handleAddVariant = () => {
+    setForm((prev) => ({
+      ...prev,
+      variants: [...prev.variants, createEmptySizeVariant()],
+    }));
+  };
+
+  const handleRemoveVariant = (variantId) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.filter((variant) => variant.id !== variantId),
+    }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -98,6 +129,7 @@ const AdminAddPlant = ({ token }) => {
         throw new Error(uploadValidationMessage);
       }
 
+      const serializedVariants = serializeSizeVariants(form.variants);
       const payload = new FormData();
       payload.append("name", form.name);
       payload.append("description", form.description);
@@ -110,6 +142,7 @@ const AdminAddPlant = ({ token }) => {
       payload.append("price", form.price);
       payload.append("discountedPrice", form.discountedPrice || 0);
       payload.append("stock", form.stock || 0);
+      payload.append("variants", JSON.stringify(serializedVariants));
       payload.append("isFeatured", String(form.isFeatured));
       payload.append("isBestSeller", String(form.isBestSeller));
       payload.append("isNewArrival", String(form.isNewArrival));
@@ -133,7 +166,7 @@ const AdminAddPlant = ({ token }) => {
         throw new Error(data.message || "Unable to create product");
       }
 
-      setForm(initialForm);
+      setForm(createInitialForm());
       setImageFiles(emptyImageFiles);
       setMessage("Product created successfully.");
     } catch (submitError) {
@@ -242,13 +275,16 @@ const AdminAddPlant = ({ token }) => {
           <input
             id="price"
             name="price"
-            required
+            required={!hasSizeVariants}
             min="1"
             type="number"
             value={form.price}
             onChange={handleChange}
             className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            Required when no size-specific pricing is added.
+          </p>
         </div>
 
         <div>
@@ -268,6 +304,13 @@ const AdminAddPlant = ({ token }) => {
             className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
           />
         </div>
+
+        <SizePricingEditor
+          variants={form.variants}
+          onChange={handleVariantChange}
+          onAdd={handleAddVariant}
+          onRemove={handleRemoveVariant}
+        />
 
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="stock">
