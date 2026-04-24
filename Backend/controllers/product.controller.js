@@ -95,6 +95,135 @@ const parseTags = (value, fallback = []) => {
     .filter(Boolean);
 };
 
+const getVariantLabel = (variant = {}) =>
+  sanitizeText(variant.size || variant.name || variant.potSize);
+
+const getVariantCurrentPrice = (variant = {}) => {
+  const regularPrice = Number(variant?.price || 0);
+  const discountedPrice = Number(variant?.discountedPrice || 0);
+
+  if (discountedPrice > 0 && discountedPrice < regularPrice) {
+    return discountedPrice;
+  }
+
+  return regularPrice;
+};
+
+const normalizeVariantsInput = (rawVariants = []) => {
+  if (!Array.isArray(rawVariants)) {
+    throw createHttpError(400, "variants must be an array");
+  }
+
+  const normalizedVariants = [];
+  const seenLabels = new Set();
+
+  rawVariants.forEach((entry = {}, index) => {
+    const size = getVariantLabel(entry);
+    const hasAnyValue = Boolean(
+      size ||
+        sanitizeText(entry?.price) ||
+        sanitizeText(entry?.discountedPrice) ||
+        sanitizeText(entry?.stock) ||
+        sanitizeText(entry?.sku)
+    );
+
+    if (!hasAnyValue) {
+      return;
+    }
+
+    if (!size) {
+      throw createHttpError(400, `Variant ${index + 1} must include a size`);
+    }
+
+    const normalizedLabel = size.toLowerCase();
+    if (seenLabels.has(normalizedLabel)) {
+      throw createHttpError(400, `Duplicate size option "${size}" is not allowed`);
+    }
+
+    const price = parseNumber(entry?.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      throw createHttpError(400, `Variant ${size} must include a valid price`);
+    }
+
+    const discountedPrice = parseNumber(entry?.discountedPrice, 0);
+    if (!Number.isFinite(discountedPrice) || discountedPrice < 0) {
+      throw createHttpError(
+        400,
+        `Variant ${size} must include a valid discounted price`
+      );
+    }
+
+    if (discountedPrice > price) {
+      throw createHttpError(
+        400,
+        `Variant ${size} discounted price cannot be greater than price`
+      );
+    }
+
+    const stock = parseNumber(entry?.stock, 0);
+    if (!Number.isFinite(stock) || stock < 0) {
+      throw createHttpError(400, `Variant ${size} must include a valid stock value`);
+    }
+
+    normalizedVariants.push({
+      name: size,
+      size,
+      sku: entry?.sku !== undefined ? normalizeSku(entry.sku) : "",
+      price,
+      discountedPrice,
+      stock,
+      potSize: size,
+      plantHeight: sanitizeText(entry?.plantHeight),
+      images: Array.isArray(entry?.images) ? entry.images.filter(Boolean) : [],
+    });
+    seenLabels.add(normalizedLabel);
+  });
+
+  return normalizedVariants;
+};
+
+const parseVariants = (value, fallback = []) => {
+  if (value === undefined) {
+    return normalizeVariantsInput(fallback);
+  }
+
+  const parsedValue = parseJSON(value);
+  if (parsedValue === undefined) {
+    return [];
+  }
+
+  return normalizeVariantsInput(parsedValue);
+};
+
+const summarizeVariants = (variants = []) => {
+  if (!variants.length) {
+    return null;
+  }
+
+  const sortedVariants = [...variants].sort((left, right) => {
+    const displayDelta = getVariantCurrentPrice(left) - getVariantCurrentPrice(right);
+    if (displayDelta !== 0) return displayDelta;
+
+    const priceDelta = Number(left.price || 0) - Number(right.price || 0);
+    if (priceDelta !== 0) return priceDelta;
+
+    return getVariantLabel(left).localeCompare(getVariantLabel(right));
+  });
+
+  const cheapestVariant = sortedVariants[0];
+  const totalStock = variants.reduce(
+    (total, variant) => total + Math.max(0, Number(variant?.stock || 0)),
+    0
+  );
+
+  return {
+    price: Number(cheapestVariant?.price || 0),
+    discountedPrice: Number(cheapestVariant?.discountedPrice || 0),
+    stock: totalStock,
+    isInStock: totalStock > 0,
+  };
+};
+
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const cleanupLocalFile = (filePath = "") => {
@@ -199,6 +328,7 @@ const getCategoryPayload = ({ categoryKey, category, productType }) => {
 const normalizeProductForResponse = (product) => {
   const normalizedProduct =
     typeof product?.toObject === "function" ? product.toObject() : { ...product };
+  const normalizedVariants = normalizeVariantsInput(normalizedProduct.variants || []);
 
   const categoryPayload = getCategoryPayload({
     categoryKey: normalizedProduct.categoryKey,
@@ -208,6 +338,8 @@ const normalizeProductForResponse = (product) => {
 
   return {
     ...normalizedProduct,
+    variants: normalizedVariants,
+    hasVariants: normalizedVariants.length > 0,
     categoryKey: categoryPayload.categoryKey,
     category: categoryPayload.category,
     categorySection: categoryPayload.categorySection,
@@ -236,15 +368,20 @@ const buildProductPayload = async ({ body, files, existingProduct = null }) => {
     throw createHttpError(400, "Invalid productType value");
   }
 
-  const nextPrice = parseNumber(body.price, existingProduct?.price);
+  const nextVariants = parseVariants(body.variants, existingProduct?.variants || []);
+  const variantSummary = summarizeVariants(nextVariants);
+  const hasVariants = nextVariants.length > 0;
+
+  const nextPrice = hasVariants
+    ? Number(variantSummary?.price || 0)
+    : parseNumber(body.price, existingProduct?.price);
   if (!Number.isFinite(nextPrice) || nextPrice <= 0) {
     throw createHttpError(400, "Price must be a valid number greater than 0");
   }
 
-  const nextDiscountedPrice = parseNumber(
-    body.discountedPrice,
-    existingProduct?.discountedPrice ?? 0
-  );
+  const nextDiscountedPrice = hasVariants
+    ? Number(variantSummary?.discountedPrice ?? 0)
+    : parseNumber(body.discountedPrice, existingProduct?.discountedPrice ?? 0);
   if (!Number.isFinite(nextDiscountedPrice) || nextDiscountedPrice < 0) {
     throw createHttpError(400, "Discounted price must be a valid positive number");
   }
@@ -263,7 +400,9 @@ const buildProductPayload = async ({ body, files, existingProduct = null }) => {
     throw createHttpError(400, "taxPercent must be a valid number between 0 and 100");
   }
 
-  const nextStock = parseNumber(body.stock, existingProduct?.stock ?? 0);
+  const nextStock = hasVariants
+    ? Number(variantSummary?.stock ?? 0)
+    : parseNumber(body.stock, existingProduct?.stock ?? 0);
   if (!Number.isFinite(nextStock) || nextStock < 0) {
     throw createHttpError(400, "Stock must be a valid positive number");
   }
@@ -312,7 +451,9 @@ const buildProductPayload = async ({ body, files, existingProduct = null }) => {
     costPrice: nextCostPrice,
     taxPercent: nextTaxPercent,
     stock: nextStock,
-    isInStock: nextStock > 0,
+    isInStock: hasVariants ? Boolean(variantSummary?.isInStock) : nextStock > 0,
+    hasVariants,
+    variants: nextVariants,
     images: nextImages,
     plantDetails:
       parseJSON(body.plantDetails) !== undefined

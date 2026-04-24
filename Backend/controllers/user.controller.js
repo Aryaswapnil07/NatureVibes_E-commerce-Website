@@ -7,7 +7,7 @@ import userModel from "../models/User.model.js";
 const getEnvValue = (value) => (value || "").replace(/"/g, "").trim();
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
-const USER_PROJECTION = "_id name email phone role createdAt updatedAt";
+const USER_PROJECTION = "_id name email phone role addresses createdAt updatedAt";
 
 const createToken = ({ id, role = "customer" }) => {
   return jwt.sign(
