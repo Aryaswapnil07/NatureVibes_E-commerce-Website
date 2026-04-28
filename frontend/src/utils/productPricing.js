@@ -1,4 +1,5 @@
 const normalizeText = (value = "") => String(value || "").trim();
+const normalizeLookup = (value = "") => normalizeText(value).toLowerCase();
 
 const resolvePrimaryImage = (product = {}) =>
   product.images?.find?.((entry) => entry?.isPrimary)?.url ||
@@ -6,20 +7,93 @@ const resolvePrimaryImage = (product = {}) =>
   product.image ||
   "";
 
-const getVariantLabel = (variant = {}) =>
-  normalizeText(variant.size || variant.name || variant.potSize);
+const getVariantSize = (variant = {}) => {
+  const explicitSize = normalizeText(variant.size || variant.potSize);
+  if (explicitSize) {
+    return explicitSize;
+  }
+
+  if (normalizeText(variant.color || variant.colour)) {
+    return "";
+  }
+
+  return normalizeText(variant.name);
+};
+
+const getVariantColor = (variant = {}) =>
+  normalizeText(variant.color || variant.colour);
+
+const getVariantLabel = (variant = {}) => {
+  const color = getVariantColor(variant);
+  const size = getVariantSize(variant);
+
+  if (color && size) {
+    return `${color} / ${size}`;
+  }
+
+  return color || size || normalizeText(variant.label || variant.name);
+};
+
+const getUniqueLabels = (values = []) => {
+  const labels = [];
+  const seen = new Set();
+
+  values.forEach((value) => {
+    const label = normalizeText(value);
+    const lookup = normalizeLookup(label);
+
+    if (!label || seen.has(lookup)) {
+      return;
+    }
+
+    seen.add(lookup);
+    labels.push(label);
+  });
+
+  return labels;
+};
+
+const compareVariants = (left, right) => {
+  const displayDelta = left.currentPrice - right.currentPrice;
+  if (displayDelta !== 0) return displayDelta;
+
+  const regularDelta = left.price - right.price;
+  if (regularDelta !== 0) return regularDelta;
+
+  return left.label.localeCompare(right.label, undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+};
+
+const normalizeSelectionInput = (selection = {}) => {
+  if (typeof selection === "string") {
+    return { color: "", size: normalizeText(selection) };
+  }
+
+  return {
+    color: normalizeText(
+      selection.color || selection.variantColor || selection.preferredColor
+    ),
+    size: normalizeText(
+      selection.size || selection.variantSize || selection.preferredSize
+    ),
+  };
+};
 
 const normalizeProductVariants = (variants = []) =>
   Array.isArray(variants)
     ? variants
         .map((variant = {}) => {
-          const size = getVariantLabel(variant);
+          const size = getVariantSize(variant);
+          const color = getVariantColor(variant);
+          const label = getVariantLabel({ ...variant, color, size });
           const price = Number(variant.price || 0);
           const discountedPrice = Number(variant.discountedPrice || 0);
           const currentPrice =
             discountedPrice > 0 && discountedPrice < price ? discountedPrice : price;
 
-          if (!size || !Number.isFinite(price) || price <= 0) {
+          if (!label || !Number.isFinite(price) || price <= 0) {
             return null;
           }
 
@@ -27,7 +101,9 @@ const normalizeProductVariants = (variants = []) =>
 
           return {
             ...variant,
+            color,
             size,
+            label,
             price,
             discountedPrice,
             currentPrice,
@@ -38,28 +114,54 @@ const normalizeProductVariants = (variants = []) =>
         .filter(Boolean)
     : [];
 
-const getProductPriceInfo = (product = {}, preferredSize = "") => {
+const getProductPriceInfo = (product = {}, selection = {}) => {
   const variants = normalizeProductVariants(product.variants);
 
   if (variants.length > 0) {
-    const sortedVariants = [...variants].sort((left, right) => {
-      const displayDelta = left.currentPrice - right.currentPrice;
-      if (displayDelta !== 0) return displayDelta;
+    const sortedVariants = [...variants].sort(compareVariants);
+    const preferredSelection = normalizeSelectionInput(selection);
+    const colorLabels = getUniqueLabels(sortedVariants.map((variant) => variant.color));
 
-      const regularDelta = left.price - right.price;
-      if (regularDelta !== 0) return regularDelta;
+    const preferredColorLookup = normalizeLookup(preferredSelection.color);
+    const preferredSizeLookup = normalizeLookup(preferredSelection.size);
 
-      return left.size.localeCompare(right.size, undefined, {
-        sensitivity: "base",
-        numeric: true,
-      });
-    });
+    const resolvedColor = colorLabels.length
+      ? sortedVariants.find((variant) => normalizeLookup(variant.color) === preferredColorLookup)
+          ?.color ||
+        sortedVariants.find((variant) => variant.isInStock && variant.color)?.color ||
+        colorLabels[0] ||
+        ""
+      : "";
 
-    const normalizedPreferredSize = normalizeText(preferredSize).toLowerCase();
+    const filteredVariants = resolvedColor
+      ? sortedVariants.filter(
+          (variant) => normalizeLookup(variant.color) === normalizeLookup(resolvedColor)
+        )
+      : sortedVariants;
+
+    const sizeLabels = getUniqueLabels(sortedVariants.map((variant) => variant.size));
+    const availableSizeLabels = getUniqueLabels(
+      filteredVariants.map((variant) => variant.size)
+    );
+
+    const resolvedSize = availableSizeLabels.length
+      ? filteredVariants.find((variant) => normalizeLookup(variant.size) === preferredSizeLookup)
+          ?.size ||
+        filteredVariants.find((variant) => variant.isInStock && variant.size)?.size ||
+        availableSizeLabels[0] ||
+        ""
+      : "";
+
     const selectedVariant =
-      sortedVariants.find(
-        (variant) => variant.size.toLowerCase() === normalizedPreferredSize
-      ) ||
+      filteredVariants.find((variant) => {
+        if (resolvedSize) {
+          return normalizeLookup(variant.size) === normalizeLookup(resolvedSize);
+        }
+
+        return true;
+      }) ||
+      filteredVariants.find((variant) => variant.isInStock) ||
+      filteredVariants[0] ||
       sortedVariants.find((variant) => variant.isInStock) ||
       sortedVariants[0];
 
@@ -72,8 +174,13 @@ const getProductPriceInfo = (product = {}, preferredSize = "") => {
     return {
       hasVariants: true,
       variants: sortedVariants,
+      filteredVariants,
       selectedVariant,
-      sizeLabels: sortedVariants.map((variant) => variant.size),
+      colorLabels,
+      sizeLabels,
+      availableSizeLabels,
+      selectedColor: selectedVariant?.color || resolvedColor,
+      selectedSize: selectedVariant?.size || resolvedSize,
       displayPrice: Number(selectedVariant?.currentPrice || 0),
       regularPrice: Number(selectedVariant?.price || 0),
       discountedPrice: Number(selectedVariant?.discountedPrice || 0),
@@ -96,8 +203,13 @@ const getProductPriceInfo = (product = {}, preferredSize = "") => {
   return {
     hasVariants: false,
     variants: [],
+    filteredVariants: [],
     selectedVariant: null,
+    colorLabels: [],
     sizeLabels: [],
+    availableSizeLabels: [],
+    selectedColor: "",
+    selectedSize: "",
     displayPrice,
     regularPrice,
     discountedPrice,
@@ -114,19 +226,28 @@ const getProductPriceInfo = (product = {}, preferredSize = "") => {
 const resolveProductIdentity = (product = {}) =>
   normalizeText(product.backendId || product._id || product.id || product.slug || product.name);
 
-const createCartProductSnapshot = (product = {}, preferredSize = "") => {
-  const priceInfo = getProductPriceInfo(product, preferredSize);
+const createCartProductSnapshot = (product = {}, selection = {}) => {
+  const priceInfo = getProductPriceInfo(product, selection);
   const productId = resolveProductIdentity(product);
   const backendId = normalizeText(product.backendId || product._id || product.id);
+  const selectedColor = priceInfo.selectedVariant?.color || "";
   const selectedSize = priceInfo.selectedVariant?.size || "";
+  const variantLabel =
+    priceInfo.selectedVariant?.label || [selectedColor, selectedSize].filter(Boolean).join(" / ");
   const baseName = normalizeText(product.name || "Product");
+  const variantKey = [selectedColor, selectedSize]
+    .filter(Boolean)
+    .map((entry) => normalizeLookup(entry))
+    .join("::");
 
   return {
-    id: selectedSize ? `${productId}::${selectedSize.toLowerCase()}` : productId,
+    id: variantKey ? `${productId}::${variantKey}` : productId,
     backendId,
     productId: backendId,
     name: baseName,
     baseName,
+    variantLabel,
+    variantColor: selectedColor,
     variantSize: selectedSize,
     category: product.subCategory || product.category || product.productType || "General",
     price: Number(priceInfo.displayPrice || 0),

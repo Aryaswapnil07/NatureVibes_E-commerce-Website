@@ -6,6 +6,8 @@ import mongoose from "mongoose";
 const variantSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true },
+    label: { type: String, trim: true },
+    color: { type: String, trim: true },
     size: { type: String, trim: true },
     sku: String,
     price: Number,
