@@ -25,7 +25,13 @@ const SearchBar = ({ placeholder, products = [] }) => {
           item.name.toLowerCase().includes(lowerQuery) ||
           String(item.category || "")
             .toLowerCase()
-            .includes(lowerQuery)
+            .includes(lowerQuery) ||
+          (item.colorOptions || []).some((color) =>
+            String(color || "").toLowerCase().includes(lowerQuery)
+          ) ||
+          (item.sizeOptions || []).some((size) =>
+            String(size || "").toLowerCase().includes(lowerQuery)
+          )
       )
       .slice(0, 6);
   }, [query, allProducts]);

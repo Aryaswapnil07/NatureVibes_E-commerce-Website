@@ -29,6 +29,20 @@ const RelatedProducts = ({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleQuickAction = (event, product) => {
+    event.stopPropagation();
+
+    if (!product.isInStock) return;
+
+    const requiresSelection = Array.isArray(product.variants) && product.variants.length > 1;
+    if (requiresSelection) {
+      handleProductClick(product);
+      return;
+    }
+
+    onAddToCart(createCartProductSnapshot(product));
+  };
+
   return (
     <section className="related-section">
       <div className="related-header">
@@ -63,6 +77,12 @@ const RelatedProducts = ({
                   {item.sizeOptions.length > 2 ? " +" : ""}
                 </p>
               ) : null}
+              {item.colorOptions?.length ? (
+                <p className="related-color-summary">
+                  Colors: {item.colorOptions.slice(0, 2).join(", ")}
+                  {item.colorOptions.length > 2 ? " +" : ""}
+                </p>
+              ) : null}
               <div className="related-price-row">
                 <span className="related-price">
                   {item.pricePrefix || ""}Rs {Number(item.price || 0).toLocaleString("en-IN")}
@@ -70,12 +90,14 @@ const RelatedProducts = ({
                 <button
                   className="related-add-btn"
                   disabled={!item.isInStock}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (!item.isInStock) return;
-                    onAddToCart(createCartProductSnapshot(item));
-                  }}
-                  title={item.isInStock ? "Add to Cart" : "Out of Stock"}
+                  onClick={(event) => handleQuickAction(event, item)}
+                  title={
+                    item.isInStock
+                      ? Array.isArray(item.variants) && item.variants.length > 1
+                        ? "Choose options"
+                        : "Add to Cart"
+                      : "Out of Stock"
+                  }
                 >
                   <ShoppingCart size={18} />
                 </button>
