@@ -25,7 +25,24 @@ const ProductCard = ({ product, onAdd }) => {
   };
 
   const sizeSummary = Array.isArray(product.sizeOptions) ? product.sizeOptions.slice(0, 3) : [];
+  const colorSummary = Array.isArray(product.colorOptions)
+    ? product.colorOptions.slice(0, 3)
+    : [];
   const canAddToCart = Boolean(product.isInStock);
+
+  const handleQuickAction = (event) => {
+    event.stopPropagation();
+
+    if (!canAddToCart) return;
+
+    const requiresSelection = Array.isArray(product.variants) && product.variants.length > 1;
+    if (requiresSelection) {
+      handleViewDetails();
+      return;
+    }
+
+    onAdd(createCartProductSnapshot(product));
+  };
 
   return (
     <div ref={cardRef} className={`product-card category-card ${isVisible ? "show" : ""}`}>
@@ -49,6 +66,13 @@ const ProductCard = ({ product, onAdd }) => {
           </p>
         ) : null}
 
+        {colorSummary.length ? (
+          <p className="product-color-summary">
+            Colors: {colorSummary.join(", ")}
+            {product.colorOptions.length > colorSummary.length ? " +" : ""}
+          </p>
+        ) : null}
+
         <div className="price-action-row">
           <span className="current-price">
             {product.pricePrefix ? (
@@ -59,14 +83,22 @@ const ProductCard = ({ product, onAdd }) => {
           <button
             className="add-btn-icon"
             disabled={!canAddToCart}
-            title={canAddToCart ? "Add to cart" : "Out of stock"}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (!canAddToCart) return;
-              onAdd(createCartProductSnapshot(product));
-            }}
+            title={
+              canAddToCart
+                ? Array.isArray(product.variants) && product.variants.length > 1
+                  ? "Choose options"
+                  : "Add to cart"
+                : "Out of stock"
+            }
+            onClick={handleQuickAction}
           >
-            <span className="material-icons">{canAddToCart ? "add" : "block"}</span>
+            <span className="material-icons">
+              {canAddToCart
+                ? Array.isArray(product.variants) && product.variants.length > 1
+                  ? "tune"
+                  : "add"
+                : "block"}
+            </span>
           </button>
         </div>
       </div>

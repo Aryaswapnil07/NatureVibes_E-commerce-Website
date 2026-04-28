@@ -12,9 +12,26 @@ const formatCurrency = (value) =>
 
 const getProductSizes = (product = {}) =>
   Array.isArray(product.variants)
-    ? product.variants
-        .map((variant) => String(variant?.size || variant?.name || variant?.potSize || "").trim())
-        .filter(Boolean)
+    ? Array.from(
+        new Set(
+          product.variants
+            .map((variant) =>
+              String(variant?.size || variant?.name || variant?.potSize || "").trim()
+            )
+            .filter(Boolean)
+        )
+      )
+    : [];
+
+const getProductColors = (product = {}) =>
+  Array.isArray(product.variants)
+    ? Array.from(
+        new Set(
+          product.variants
+            .map((variant) => String(variant?.color || variant?.colour || "").trim())
+            .filter(Boolean)
+        )
+      )
     : [];
 
 const ProductList = ({ token }) => {
@@ -118,6 +135,7 @@ const ProductList = ({ token }) => {
                 <th className="px-3 py-3 font-medium">Type</th>
                 <th className="px-3 py-3 font-medium">Category</th>
                 <th className="px-3 py-3 font-medium">Price</th>
+                <th className="px-3 py-3 font-medium">Colors</th>
                 <th className="px-3 py-3 font-medium">Sizes</th>
                 <th className="px-3 py-3 font-medium">Stock</th>
                 <th className="px-3 py-3 font-medium">Action</th>
@@ -127,7 +145,9 @@ const ProductList = ({ token }) => {
             <tbody>
               {products.map((product) => {
                 const sizeLabels = getProductSizes(product);
+                const colorLabels = getProductColors(product);
                 const hasSizePricing = sizeLabels.length > 0;
+                const hasColorOptions = colorLabels.length > 0;
 
                 return (
                 <tr key={product._id} className="border-b border-gray-100">
@@ -158,6 +178,9 @@ const ProductList = ({ token }) => {
                       : formatCurrency(product.price)}
                   </td>
                   <td className="px-3 py-3 text-gray-700">
+                    {hasColorOptions ? colorLabels.join(", ") : "-"}
+                  </td>
+                  <td className="px-3 py-3 text-gray-700">
                     {hasSizePricing ? sizeLabels.join(", ") : "-"}
                   </td>
                   <td className="px-3 py-3 text-gray-700">{product.stock ?? 0}</td>
@@ -185,7 +208,7 @@ const ProductList = ({ token }) => {
 
               {!products.length ? (
                 <tr>
-                  <td className="px-3 py-8 text-center text-sm text-gray-500" colSpan={7}>
+                  <td className="px-3 py-8 text-center text-sm text-gray-500" colSpan={8}>
                     No products found.
                   </td>
                 </tr>

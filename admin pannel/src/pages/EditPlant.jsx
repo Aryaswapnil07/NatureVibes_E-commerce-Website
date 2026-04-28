@@ -275,7 +275,8 @@ const EditPlant = ({ token }) => {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Edit Plant</h1>
         <p className="text-sm text-gray-500">
-          Update plant details and upload 3-4 new angle images if needed.
+          Update plant details, manage color and size variants, and upload 3-4 new
+          angle images if needed.
         </p>
       </div>
       <button
@@ -401,7 +402,7 @@ const EditPlant = ({ token }) => {
             className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Required when no size-specific pricing is added.
+            Required when no variant-specific pricing is added.
           </p>
         </div>
 

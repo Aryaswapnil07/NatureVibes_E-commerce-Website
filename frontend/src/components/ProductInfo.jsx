@@ -47,6 +47,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
 
@@ -148,6 +149,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
 
   useEffect(() => {
     setSelectedImageIndex(0);
+    setSelectedColor("");
     setSelectedSize("");
     setQuantity(1);
 
@@ -162,29 +164,40 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
       : 0;
   const mainImage = gallery[activeImageIndex] || "";
   const priceInfo = useMemo(
-    () => getProductPriceInfo(product || {}, selectedSize),
-    [product, selectedSize]
+    () =>
+      getProductPriceInfo(product || {}, {
+        color: selectedColor,
+        size: selectedSize,
+      }),
+    [product, selectedColor, selectedSize]
   );
-  const sizeOptions = priceInfo.variants;
+  const colorOptions = useMemo(
+    () =>
+      priceInfo.colorLabels.map((color) => ({
+        label: color,
+        isInStock: priceInfo.variants.some(
+          (variant) => variant.color === color && variant.isInStock
+        ),
+      })),
+    [priceInfo.colorLabels, priceInfo.variants]
+  );
+  const sizeOptions = useMemo(
+    () => priceInfo.filteredVariants.filter((option) => option.size),
+    [priceInfo.filteredVariants]
+  );
+  const hasSizeChoices = sizeOptions.length > 0;
 
   useEffect(() => {
-    if (!sizeOptions.length) {
-      if (selectedSize) {
-        setSelectedSize("");
-      }
-      return;
+    if (priceInfo.selectedColor !== selectedColor) {
+      setSelectedColor(priceInfo.selectedColor);
     }
+  }, [priceInfo.selectedColor, selectedColor]);
 
-    const nextSize =
-      sizeOptions.find((option) => option.size === selectedSize)?.size ||
-      sizeOptions.find((option) => option.isInStock)?.size ||
-      sizeOptions[0]?.size ||
-      "";
-
-    if (nextSize && nextSize !== selectedSize) {
-      setSelectedSize(nextSize);
+  useEffect(() => {
+    if (priceInfo.selectedSize !== selectedSize) {
+      setSelectedSize(priceInfo.selectedSize);
     }
-  }, [selectedSize, sizeOptions]);
+  }, [priceInfo.selectedSize, selectedSize]);
 
   const currentPrice = Number(priceInfo.displayPrice || 0);
   const originalPrice = Number(priceInfo.regularPrice || 0);
@@ -241,11 +254,14 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
     if (!product) return null;
 
     return {
-      ...createCartProductSnapshot(product, selectedSize),
+      ...createCartProductSnapshot(product, {
+        color: selectedColor,
+        size: selectedSize,
+      }),
       image: mainImage || product.image || "",
       badge: productBadges[0] || "",
     };
-  }, [mainImage, product, productBadges, selectedSize]);
+  }, [mainImage, product, productBadges, selectedColor, selectedSize]);
 
   const addSelectedQuantityToCart = () => {
     if (!cartProduct || !onAddToCart || !inStock) return;
@@ -357,7 +373,37 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
               </div>
 
               <div className="purchase-card">
-                {sizeOptions.length ? (
+                {colorOptions.length ? (
+                  <div className="color-selector-block">
+                    <div className="color-selector-head">
+                      <p>Color</p>
+                      <span>{priceInfo.selectedColor || "-"}</span>
+                    </div>
+
+                    <div className="color-option-grid">
+                      {colorOptions.map((option) => {
+                        const isSelected = priceInfo.selectedColor === option.label;
+
+                        return (
+                          <button
+                            key={option.label}
+                            type="button"
+                            className={`color-option-btn ${isSelected ? "selected" : ""}`}
+                            onClick={() => setSelectedColor(option.label)}
+                            disabled={!option.isInStock}
+                          >
+                            <span className="color-option-label">{option.label}</span>
+                            <span className="color-option-state">
+                              {option.isInStock ? "Available" : "Out of stock"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
+                {hasSizeChoices ? (
                   <div className="size-selector-block">
                     <div className="size-selector-head">
                       <p>Size</p>
@@ -370,7 +416,7 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
 
                         return (
                           <button
-                            key={option.size}
+                            key={option.label}
                             type="button"
                             className={`size-option-btn ${isSelected ? "selected" : ""}`}
                             onClick={() => setSelectedSize(option.size)}
@@ -453,7 +499,13 @@ const ProductInfo = ({ onAddToCart, allProducts = [] }) => {
                     <span>Brand</span>
                     <strong>{product.brand || "UrbanVibes"}</strong>
                   </div>
-                  {sizeOptions.length ? (
+                  {colorOptions.length ? (
+                    <div className="spec-item">
+                      <span>Selected Color</span>
+                      <strong>{priceInfo.selectedColor || "-"}</strong>
+                    </div>
+                  ) : null}
+                  {hasSizeChoices ? (
                     <div className="spec-item">
                       <span>Selected Size</span>
                       <strong>{priceInfo.selectedVariant?.size || "-"}</strong>
