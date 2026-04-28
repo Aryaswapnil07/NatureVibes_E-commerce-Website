@@ -181,7 +181,8 @@ const AdminAddPlant = ({ token }) => {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Add Plant</h1>
         <p className="text-sm text-gray-500">
-          Create a new product and upload up to 4 plant angles.
+          Create a new product, add color and size variants, and upload up to 4 plant
+          angles.
         </p>
       </div>
 
@@ -283,7 +284,7 @@ const AdminAddPlant = ({ token }) => {
             className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Required when no size-specific pricing is added.
+            Required when no variant-specific pricing is added.
           </p>
         </div>
 

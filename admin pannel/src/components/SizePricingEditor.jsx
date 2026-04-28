@@ -6,10 +6,10 @@ const SizePricingEditor = ({ variants = [], onChange, onAdd, onRemove }) => {
     <div className="lg:col-span-2 rounded-md border border-gray-200 bg-gray-50 p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-gray-700">Size & Price Options</p>
+          <p className="text-sm font-semibold text-gray-700">Color, Size & Price Options</p>
           <p className="text-xs text-gray-500">
-            Add optional size-based pricing. The lowest size price becomes the catalog
-            price on the storefront.
+            Add one row per sellable variant, like Pink / 10 inch or White / 14 inch.
+            The lowest variant price becomes the catalog price on the storefront.
           </p>
         </div>
         <button
@@ -17,7 +17,7 @@ const SizePricingEditor = ({ variants = [], onChange, onAdd, onRemove }) => {
           onClick={onAdd}
           className="rounded-md border border-green-200 bg-white px-3 py-2 text-xs font-semibold text-green-700 hover:bg-green-50"
         >
-          Add Size
+          Add Variant
         </button>
       </div>
 
@@ -26,8 +26,20 @@ const SizePricingEditor = ({ variants = [], onChange, onAdd, onRemove }) => {
           {variants.map((variant, index) => (
             <div
               key={variant.id}
-              className="grid grid-cols-1 gap-3 rounded-md border border-gray-200 bg-white p-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.9fr))_auto]"
+              className="grid grid-cols-1 gap-3 rounded-md border border-gray-200 bg-white p-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(3,minmax(0,0.8fr))_auto]"
             >
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Color
+                </label>
+                <input
+                  value={variant.color}
+                  onChange={(event) => onChange(variant.id, "color", event.target.value)}
+                  placeholder={index === 0 ? "Pink" : "White / Red / Orange"}
+                  className={inputClassName}
+                />
+              </div>
+
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">
                   Size
@@ -95,8 +107,8 @@ const SizePricingEditor = ({ variants = [], onChange, onAdd, onRemove }) => {
         </div>
       ) : (
         <p className="text-xs text-gray-500">
-          No size-specific pricing added yet. Use the button above if this product has
-          multiple sizes.
+          No variant pricing added yet. Use the button above if this product has
+          multiple colors, sizes, or both.
         </p>
       )}
     </div>
