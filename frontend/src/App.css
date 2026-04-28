@@ -668,6 +668,13 @@ section {
   gap: 14px;
 }
 
+.catalog-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
 .catalog-filter-label {
   color: var(--dark-green);
   font-size: 0.88rem;
@@ -812,6 +819,13 @@ section {
 
 .product-size-summary {
   margin: 0 0 10px;
+  font-size: 0.78rem;
+  color: #627564;
+  min-height: 1.2em;
+}
+
+.product-color-summary {
+  margin: -6px 0 10px;
   font-size: 0.78rem;
   color: #627564;
   min-height: 1.2em;

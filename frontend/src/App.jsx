@@ -82,9 +82,11 @@ const normalizeCatalogProduct = (product, fallbackIndex = 0) => {
     shipping: product.shipping || null,
     images: Array.isArray(product.images) ? product.images : [],
     variants: priceInfo.variants,
+    colorOptions: priceInfo.colorLabels,
     sizeOptions: priceInfo.sizeLabels,
     hasVariants: priceInfo.hasVariants,
-    defaultSize: priceInfo.selectedVariant?.size || "",
+    defaultColor: priceInfo.selectedColor || "",
+    defaultSize: priceInfo.selectedSize || "",
     pricePrefix: priceInfo.hasVariants ? "From " : "",
     image,
     badge,
@@ -151,6 +153,7 @@ function App() {
   const [catalogSections, setCatalogSections] = useState([]);
   const [catalogError, setCatalogError] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [selectedColorFilter, setSelectedColorFilter] = useState("all");
   const [selectedSizeFilter, setSelectedSizeFilter] = useState("all");
   const [userToken, setUserToken] = useState(
     () => localStorage.getItem(USER_TOKEN_KEY) || ""
@@ -247,6 +250,24 @@ function App() {
     [catalogSections]
   );
 
+  const colorFilterOptions = useMemo(() => {
+    const colorLabels = new Set();
+
+    catalogSections.forEach((section) => {
+      section.products.forEach((product) => {
+        (product.colorOptions || []).forEach((color) => {
+          if (color) {
+            colorLabels.add(color);
+          }
+        });
+      });
+    });
+
+    return Array.from(colorLabels).sort((left, right) =>
+      left.localeCompare(right, undefined, { sensitivity: "base", numeric: true })
+    );
+  }, [catalogSections]);
+
   const sizeFilterOptions = useMemo(() => {
     const sizeLabels = new Set();
 
@@ -266,19 +287,36 @@ function App() {
   }, [catalogSections]);
 
   const filteredCatalogSections = useMemo(() => {
-    if (selectedSizeFilter === "all") {
+    if (selectedColorFilter === "all" && selectedSizeFilter === "all") {
       return catalogSections;
     }
 
     return catalogSections
       .map((section) => ({
         ...section,
-        products: section.products.filter((product) =>
-          (product.sizeOptions || []).includes(selectedSizeFilter)
-        ),
+        products: section.products.filter((product) => {
+          const matchesColor =
+            selectedColorFilter === "all" ||
+            (product.colorOptions || []).includes(selectedColorFilter);
+          const matchesSize =
+            selectedSizeFilter === "all" ||
+            (product.sizeOptions || []).includes(selectedSizeFilter);
+
+          return matchesColor && matchesSize;
+        }),
       }))
       .filter((section) => section.products.length > 0);
-  }, [catalogSections, selectedSizeFilter]);
+  }, [catalogSections, selectedColorFilter, selectedSizeFilter]);
+
+  useEffect(() => {
+    if (selectedColorFilter === "all") {
+      return;
+    }
+
+    if (!colorFilterOptions.includes(selectedColorFilter)) {
+      setSelectedColorFilter("all");
+    }
+  }, [colorFilterOptions, selectedColorFilter]);
 
   useEffect(() => {
     if (selectedSizeFilter === "all") {
@@ -289,6 +327,22 @@ function App() {
       setSelectedSizeFilter("all");
     }
   }, [selectedSizeFilter, sizeFilterOptions]);
+
+  const emptyCatalogMessage = useMemo(() => {
+    if (selectedColorFilter !== "all" && selectedSizeFilter !== "all") {
+      return `No products match color "${selectedColorFilter}" and size "${selectedSizeFilter}".`;
+    }
+
+    if (selectedColorFilter !== "all") {
+      return `No products are available in color "${selectedColorFilter}".`;
+    }
+
+    if (selectedSizeFilter !== "all") {
+      return `No products are available in size "${selectedSizeFilter}".`;
+    }
+
+    return "No products are currently available.";
+  }, [selectedColorFilter, selectedSizeFilter]);
 
   const totalAmount = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0),
@@ -390,32 +444,65 @@ function App() {
                   <h2>Full Plant Catalog</h2>
                   <p>Shop category-wise plants and accessories curated for every space.</p>
                 </div>
-                {sizeFilterOptions.length > 0 ? (
+                {colorFilterOptions.length > 0 || sizeFilterOptions.length > 0 ? (
                   <div className="catalog-filter-bar">
-                    <span className="catalog-filter-label">Filter by size</span>
-                    <div className="catalog-filter-chips">
-                      <button
-                        type="button"
-                        className={`catalog-filter-chip ${
-                          selectedSizeFilter === "all" ? "active" : ""
-                        }`}
-                        onClick={() => setSelectedSizeFilter("all")}
-                      >
-                        All Sizes
-                      </button>
-                      {sizeFilterOptions.map((size) => (
-                        <button
-                          key={size}
-                          type="button"
-                          className={`catalog-filter-chip ${
-                            selectedSizeFilter === size ? "active" : ""
-                          }`}
-                          onClick={() => setSelectedSizeFilter(size)}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
+                    {colorFilterOptions.length > 0 ? (
+                      <div className="catalog-filter-group">
+                        <span className="catalog-filter-label">Filter by color</span>
+                        <div className="catalog-filter-chips">
+                          <button
+                            type="button"
+                            className={`catalog-filter-chip ${
+                              selectedColorFilter === "all" ? "active" : ""
+                            }`}
+                            onClick={() => setSelectedColorFilter("all")}
+                          >
+                            All Colors
+                          </button>
+                          {colorFilterOptions.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              className={`catalog-filter-chip ${
+                                selectedColorFilter === color ? "active" : ""
+                              }`}
+                              onClick={() => setSelectedColorFilter(color)}
+                            >
+                              {color}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {sizeFilterOptions.length > 0 ? (
+                      <div className="catalog-filter-group">
+                        <span className="catalog-filter-label">Filter by size</span>
+                        <div className="catalog-filter-chips">
+                          <button
+                            type="button"
+                            className={`catalog-filter-chip ${
+                              selectedSizeFilter === "all" ? "active" : ""
+                            }`}
+                            onClick={() => setSelectedSizeFilter("all")}
+                          >
+                            All Sizes
+                          </button>
+                          {sizeFilterOptions.map((size) => (
+                            <button
+                              key={size}
+                              type="button"
+                              className={`catalog-filter-chip ${
+                                selectedSizeFilter === size ? "active" : ""
+                              }`}
+                              onClick={() => setSelectedSizeFilter(size)}
+                            >
+                              {size}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 {catalogError ? (
@@ -441,9 +528,7 @@ function App() {
 
                 {!catalogLoading && filteredCatalogSections.length === 0 ? (
                   <p style={{ textAlign: "center", color: "#6c757d" }}>
-                    {selectedSizeFilter === "all"
-                      ? "No products are currently available."
-                      : `No products are available in size "${selectedSizeFilter}".`}
+                    {emptyCatalogMessage}
                   </p>
                 ) : null}
 
