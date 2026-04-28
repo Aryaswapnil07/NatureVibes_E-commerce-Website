@@ -32,6 +32,17 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
+const formatVariantMeta = ({ variantColor = "", variantSize = "" } = {}) => {
+  const color = normalizeText(variantColor);
+  const size = normalizeText(variantSize);
+
+  if (color && size) {
+    return `${color} / ${size}`;
+  }
+
+  return color || size;
+};
+
 const resolveCartItemProductId = (item = {}) => {
   const candidateIds = [
     item.backendId,
@@ -69,6 +80,9 @@ const buildOrderItem = (item = {}) => {
   const name = normalizeText(
     item.baseName || item.productBaseName || item.name || item.title || item.product?.name
   );
+  const variantColor = normalizeText(
+    item.variantColor || item.color || item.variant?.color || item.selectedColor
+  );
   const variantSize = normalizeText(item.variantSize || item.size || item.variant?.size);
   const image = normalizeText(item.image || item.thumbnail || item.product?.image);
 
@@ -84,6 +98,7 @@ const buildOrderItem = (item = {}) => {
     ...(productId ? { productId, backendId: productId, id: productId } : {}),
     ...(name ? { name } : {}),
     ...(Number.isFinite(price) ? { price } : {}),
+    ...(variantColor ? { variantColor } : {}),
     ...(variantSize ? { variantSize } : {}),
     ...(image ? { image } : {}),
     quantity,
@@ -520,7 +535,9 @@ const CheckoutPage = ({
                   <span className="mini-name">{item.name}</span>
                   <span className="mini-qty">
                     Qty: {item.quantity}
-                    {item.variantSize ? `, Size: ${item.variantSize}` : ""}
+                    {formatVariantMeta(item)
+                      ? `, Variant: ${formatVariantMeta(item)}`
+                      : ""}
                   </span>
                 </div>
                 <span className="mini-price">{formatCurrency(item.price * item.quantity)}</span>

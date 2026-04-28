@@ -1,6 +1,25 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
+const formatVariantMeta = (item = {}) => {
+  const color = String(item.variantColor || "").trim();
+  const size = String(item.variantSize || "").trim();
+
+  if (color && size) {
+    return `Color: ${color}, Size: ${size}`;
+  }
+
+  if (color) {
+    return `Color: ${color}`;
+  }
+
+  if (size) {
+    return `Size: ${size}`;
+  }
+
+  return "";
+};
+
 const CartSidebar = ({
   isOpen,
   onClose,
@@ -63,8 +82,8 @@ const CartSidebar = ({
                   <div key={item.id} className="cart-item">
                     <div className="cart-item-info">
                       <div className="cart-item-name">{item.name}</div>
-                      {item.variantSize ? (
-                        <div className="cart-item-meta">Size: {item.variantSize}</div>
+                      {formatVariantMeta(item) ? (
+                        <div className="cart-item-meta">{formatVariantMeta(item)}</div>
                       ) : null}
                       <div className="cart-item-price">
                         {`\u20B9${item.price.toLocaleString("en-IN")}`}
