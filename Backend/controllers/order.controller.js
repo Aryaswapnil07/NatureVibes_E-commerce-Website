@@ -36,34 +36,71 @@ const sanitizeEmail = (value = "") => sanitizeText(value).toLowerCase();
 const normalizeLookupName = (value = "") => sanitizeText(value).toLowerCase();
 const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const getVariantLabel = (variant = {}) =>
-  sanitizeText(variant.size || variant.name || variant.potSize);
+const getVariantSize = (variant = {}) => {
+  const explicitSize = sanitizeText(variant.size || variant.potSize);
+  if (explicitSize) {
+    return explicitSize;
+  }
+
+  if (sanitizeText(variant.color || variant.colour)) {
+    return "";
+  }
+
+  return sanitizeText(variant.name);
+};
+
+const getVariantColor = (variant = {}) =>
+  sanitizeText(variant.color || variant.colour);
+
+const getVariantLabel = (variant = {}) => {
+  const color = getVariantColor(variant);
+  const size = getVariantSize(variant);
+
+  if (color && size) {
+    return `${color} / ${size}`;
+  }
+
+  return color || size || sanitizeText(variant.label || variant.name);
+};
+
+const buildVariantSelectionLabel = ({ variantSize = "", variantColor = "" } = {}) => {
+  const color = sanitizeText(variantColor);
+  const size = sanitizeText(variantSize);
+
+  if (color && size) {
+    return `${color} / ${size}`;
+  }
+
+  return color || size;
+};
+
+const normalizeVariantRecord = (variant = {}) => {
+  const size = getVariantSize(variant);
+  const color = getVariantColor(variant);
+  const label = getVariantLabel({ ...variant, color, size });
+  const price = Number(variant.price || 0);
+  const discountedPrice = Number(variant.discountedPrice || 0);
+  const currentPrice =
+    discountedPrice > 0 && discountedPrice < price ? discountedPrice : price;
+
+  if (!label || !Number.isFinite(price) || price <= 0) {
+    return null;
+  }
+
+  return {
+    ...variant,
+    color,
+    size,
+    label,
+    price,
+    discountedPrice,
+    currentPrice,
+    stock: Number(variant.stock ?? 0),
+  };
+};
 
 const normalizeProductVariants = (variants = []) =>
-  Array.isArray(variants)
-    ? variants
-        .map((variant = {}) => {
-          const size = getVariantLabel(variant);
-          const price = Number(variant.price || 0);
-          const discountedPrice = Number(variant.discountedPrice || 0);
-          const currentPrice =
-            discountedPrice > 0 && discountedPrice < price ? discountedPrice : price;
-
-          if (!size || !Number.isFinite(price) || price <= 0) {
-            return null;
-          }
-
-          return {
-            ...variant,
-            size,
-            price,
-            discountedPrice,
-            currentPrice,
-            stock: Number(variant.stock ?? 0),
-          };
-        })
-        .filter(Boolean)
-    : [];
+  Array.isArray(variants) ? variants.map(normalizeVariantRecord).filter(Boolean) : [];
 
 const getProductUnitPrice = (product = {}) =>
   Number(product.discountedPrice > 0 ? product.discountedPrice : product.price);
@@ -89,21 +126,44 @@ const syncProductInventorySummary = (product = {}) => {
   product.isInStock = stock > 0;
 };
 
-const findMatchingVariant = (product = {}, variantSize = "") => {
-  if (!Array.isArray(product.variants) || !product.variants.length) {
+const findMatchingVariant = (product = {}, variantSelection = {}) => {
+  const productVariants = Array.isArray(product.variants) ? product.variants : [];
+  if (!productVariants.length) {
     return null;
   }
 
-  const normalizedVariantSize = normalizeLookupName(variantSize);
-  if (!normalizedVariantSize) {
-    return null;
-  }
-
-  return (
-    product.variants.find(
-      (variant) => normalizeLookupName(getVariantLabel(variant)) === normalizedVariantSize
-    ) || null
+  const normalizedVariantSize = normalizeLookupName(variantSelection?.variantSize || "");
+  const normalizedVariantColor = normalizeLookupName(
+    variantSelection?.variantColor || ""
   );
+
+  if (!normalizedVariantSize && !normalizedVariantColor) {
+    return null;
+  }
+
+  const matchingVariants = productVariants.filter((variant) => {
+    if (
+      normalizedVariantColor &&
+      normalizeLookupName(getVariantColor(variant)) !== normalizedVariantColor
+    ) {
+      return false;
+    }
+
+    if (
+      normalizedVariantSize &&
+      normalizeLookupName(getVariantSize(variant)) !== normalizedVariantSize
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  if (matchingVariants.length === 1) {
+    return matchingVariants[0];
+  }
+
+  return null;
 };
 
 const applyInventoryChangeToProduct = ({ product, item, action }) => {
@@ -114,26 +174,41 @@ const applyInventoryChangeToProduct = ({ product, item, action }) => {
 
   const isReserveAction = action === "reserve";
   const variantSize = sanitizeText(item?.variantSize);
+  const variantColor = sanitizeText(item?.variantColor);
+  const requestedVariantLabel = buildVariantSelectionLabel({
+    variantSize,
+    variantColor,
+  });
   const delta = isReserveAction ? -quantity : quantity;
 
   const singleVariantFallback =
-    !variantSize && Array.isArray(product.variants) && product.variants.length === 1
+    !variantSize &&
+    !variantColor &&
+    Array.isArray(product.variants) &&
+    product.variants.length === 1
       ? product.variants[0]
       : null;
 
-  if (variantSize || singleVariantFallback) {
-    const matchedVariant = singleVariantFallback || findMatchingVariant(product, variantSize);
+  if (variantSize || variantColor || singleVariantFallback) {
+    const matchedVariant =
+      singleVariantFallback ||
+      findMatchingVariant(product, {
+        variantSize,
+        variantColor,
+      });
 
     if (!matchedVariant) {
       if (isReserveAction) {
         throw new Error(
-          `${product.name} no longer has the selected size "${variantSize}". Please update your cart.`
+          `${product.name} no longer has the selected option${
+            requestedVariantLabel ? ` "${requestedVariantLabel}"` : ""
+          }. Please update your cart.`
         );
       }
       return;
     }
 
-    const matchedVariantLabel = getVariantLabel(matchedVariant) || variantSize;
+    const matchedVariantLabel = getVariantLabel(matchedVariant) || requestedVariantLabel;
     const currentVariantStock = Math.max(0, Number(matchedVariant.stock || 0));
     const nextVariantStock = currentVariantStock + delta;
 
@@ -151,7 +226,7 @@ const applyInventoryChangeToProduct = ({ product, item, action }) => {
   if (Array.isArray(product.variants) && product.variants.length > 0) {
     if (isReserveAction) {
       throw new Error(
-        `${product.name} requires a size selection. Please update your cart before checkout.`
+        `${product.name} requires a variant selection. Please update your cart before checkout.`
       );
     }
 
@@ -188,6 +263,7 @@ const rollbackInventoryChanges = async (items = []) => {
         item: {
           quantity: appliedItem.quantity,
           variantSize: appliedItem.variantSize,
+          variantColor: appliedItem.variantColor,
         },
         action: "release",
       });
@@ -227,6 +303,7 @@ const applyInventoryChanges = async ({ items = [], action }) => {
         productId,
         quantity: Number(item.quantity || 0),
         variantSize: sanitizeText(item.variantSize),
+        variantColor: sanitizeText(item.variantColor),
       });
     }
   } catch (error) {
@@ -307,6 +384,14 @@ const resolveRequestedVariantSize = (item = {}) =>
       item.selectedSize
   );
 
+const resolveRequestedVariantColor = (item = {}) =>
+  sanitizeText(
+    item.variantColor ||
+      item.color ||
+      item.variant?.color ||
+      item.selectedColor
+  );
+
 const resolveRequestedImage = (item = {}) =>
   sanitizeText(
     item.image ||
@@ -334,6 +419,7 @@ const normalizeOrderItems = (items = []) => {
       name,
       price,
       variantSize: resolveRequestedVariantSize(item),
+      variantColor: resolveRequestedVariantColor(item),
       image,
       isValid,
     };
@@ -466,30 +552,39 @@ const buildOrderInput = async (req) => {
     }
 
     const productVariants = normalizeProductVariants(product.variants);
-    const matchedVariant = item.variantSize
-      ? productVariants.find(
-          (variant) => normalizeLookupName(variant.size) === normalizeLookupName(item.variantSize)
-        ) || null
-      : productVariants.length === 1
-        ? productVariants[0]
-        : null;
+    const requestedVariantLabel = buildVariantSelectionLabel({
+      variantSize: item.variantSize,
+      variantColor: item.variantColor,
+    });
+    const matchedVariant =
+      item.variantSize || item.variantColor
+        ? findMatchingVariant(product, {
+            variantSize: item.variantSize,
+            variantColor: item.variantColor,
+          })
+        : productVariants.length === 1
+          ? productVariants[0]
+          : null;
+    const normalizedMatchedVariant = matchedVariant
+      ? normalizeVariantRecord(matchedVariant)
+      : null;
 
-    if (productVariants.length > 0 && !matchedVariant) {
+    if (productVariants.length > 0 && !normalizedMatchedVariant) {
       return {
         error: {
           status: 400,
-          message: item.variantSize
-            ? `${product.name} no longer has the selected size "${item.variantSize}". Please update your cart.`
-            : `${product.name} has size-specific pricing. Please select a size and add it to cart again.`,
+          message: requestedVariantLabel
+            ? `${product.name} no longer has the selected option "${requestedVariantLabel}". Please update your cart.`
+            : `${product.name} has variant-specific pricing. Please select the required options and add it to cart again.`,
         },
       };
     }
 
-    const availableStock = matchedVariant
-      ? Number(matchedVariant.stock || 0)
+    const availableStock = normalizedMatchedVariant
+      ? Number(normalizedMatchedVariant.stock || 0)
       : Number(product.stock || 0);
 
-    const isAvailable = matchedVariant
+    const isAvailable = normalizedMatchedVariant
       ? availableStock >= item.quantity
       : product.isInStock && availableStock >= item.quantity;
 
@@ -497,15 +592,15 @@ const buildOrderInput = async (req) => {
       return {
         error: {
           status: 400,
-          message: matchedVariant
-            ? `${product.name} (${matchedVariant.size}) is out of stock or has insufficient quantity`
+          message: normalizedMatchedVariant
+            ? `${product.name} (${normalizedMatchedVariant.label}) is out of stock or has insufficient quantity`
             : `${product.name} is out of stock or has insufficient quantity`,
         },
       };
     }
 
-    const unitPrice = matchedVariant
-      ? Number(matchedVariant.currentPrice || 0)
+    const unitPrice = normalizedMatchedVariant
+      ? Number(normalizedMatchedVariant.currentPrice || 0)
       : getProductUnitPrice(product);
 
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
@@ -520,7 +615,9 @@ const buildOrderInput = async (req) => {
     finalItems.push({
       product: product._id,
       name: product.name,
-      variantSize: matchedVariant?.size || "",
+      variantLabel: normalizedMatchedVariant?.label || requestedVariantLabel || "",
+      variantColor: normalizedMatchedVariant?.color || "",
+      variantSize: normalizedMatchedVariant?.size || "",
       image: product.images?.find((entry) => entry?.isPrimary)?.url ||
         product.images?.[0]?.url ||
         item.image ||
@@ -692,7 +789,7 @@ const createStripeCheckoutSession = async (req, res) => {
 
       const lineItems = data.items.map((item) => {
         const productData = {
-          name: item.variantSize ? `${item.name} (${item.variantSize})` : item.name,
+          name: item.variantLabel ? `${item.name} (${item.variantLabel})` : item.name,
         };
 
         if (isLikelyPublicUrl(item.image)) {

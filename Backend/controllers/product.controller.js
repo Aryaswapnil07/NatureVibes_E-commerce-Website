@@ -76,6 +76,8 @@ const sanitizeText = (value, fallback = "") => {
   return String(value).trim();
 };
 
+const normalizeLookupText = (value = "") => sanitizeText(value).toLowerCase();
+
 const normalizeSku = (value) => {
   const nextSku = sanitizeText(value);
   return nextSku ? nextSku.toUpperCase() : "";
@@ -95,8 +97,32 @@ const parseTags = (value, fallback = []) => {
     .filter(Boolean);
 };
 
-const getVariantLabel = (variant = {}) =>
-  sanitizeText(variant.size || variant.name || variant.potSize);
+const getVariantSize = (variant = {}) => {
+  const explicitSize = sanitizeText(variant.size || variant.potSize);
+  if (explicitSize) {
+    return explicitSize;
+  }
+
+  if (sanitizeText(variant.color || variant.colour)) {
+    return "";
+  }
+
+  return sanitizeText(variant.name);
+};
+
+const getVariantColor = (variant = {}) =>
+  sanitizeText(variant.color || variant.colour);
+
+const getVariantLabel = (variant = {}) => {
+  const color = getVariantColor(variant);
+  const size = getVariantSize(variant);
+
+  if (color && size) {
+    return `${color} / ${size}`;
+  }
+
+  return color || size || sanitizeText(variant.label || variant.name);
+};
 
 const getVariantCurrentPrice = (variant = {}) => {
   const regularPrice = Number(variant?.price || 0);
@@ -115,12 +141,15 @@ const normalizeVariantsInput = (rawVariants = []) => {
   }
 
   const normalizedVariants = [];
-  const seenLabels = new Set();
+  const seenOptions = new Set();
 
   rawVariants.forEach((entry = {}, index) => {
-    const size = getVariantLabel(entry);
+    const size = getVariantSize(entry);
+    const color = getVariantColor(entry);
+    const label = getVariantLabel({ ...entry, size, color });
     const hasAnyValue = Boolean(
-      size ||
+      color ||
+        size ||
         sanitizeText(entry?.price) ||
         sanitizeText(entry?.discountedPrice) ||
         sanitizeText(entry?.stock) ||
@@ -131,42 +160,52 @@ const normalizeVariantsInput = (rawVariants = []) => {
       return;
     }
 
-    if (!size) {
-      throw createHttpError(400, `Variant ${index + 1} must include a size`);
+    if (!label) {
+      throw createHttpError(
+        400,
+        `Variant ${index + 1} must include at least a color or size`
+      );
     }
 
-    const normalizedLabel = size.toLowerCase();
-    if (seenLabels.has(normalizedLabel)) {
-      throw createHttpError(400, `Duplicate size option "${size}" is not allowed`);
+    const normalizedOptionKey = `${normalizeLookupText(color)}::${normalizeLookupText(
+      size
+    )}`;
+    if (seenOptions.has(normalizedOptionKey)) {
+      throw createHttpError(
+        400,
+        `Duplicate variant option "${label}" is not allowed`
+      );
     }
 
     const price = parseNumber(entry?.price);
     if (!Number.isFinite(price) || price <= 0) {
-      throw createHttpError(400, `Variant ${size} must include a valid price`);
+      throw createHttpError(400, `Variant ${label} must include a valid price`);
     }
 
     const discountedPrice = parseNumber(entry?.discountedPrice, 0);
     if (!Number.isFinite(discountedPrice) || discountedPrice < 0) {
       throw createHttpError(
         400,
-        `Variant ${size} must include a valid discounted price`
+        `Variant ${label} must include a valid discounted price`
       );
     }
 
     if (discountedPrice > price) {
       throw createHttpError(
         400,
-        `Variant ${size} discounted price cannot be greater than price`
+        `Variant ${label} discounted price cannot be greater than price`
       );
     }
 
     const stock = parseNumber(entry?.stock, 0);
     if (!Number.isFinite(stock) || stock < 0) {
-      throw createHttpError(400, `Variant ${size} must include a valid stock value`);
+      throw createHttpError(400, `Variant ${label} must include a valid stock value`);
     }
 
     normalizedVariants.push({
-      name: size,
+      name: size || "",
+      label,
+      color,
       size,
       sku: entry?.sku !== undefined ? normalizeSku(entry.sku) : "",
       price,
@@ -176,7 +215,7 @@ const normalizeVariantsInput = (rawVariants = []) => {
       plantHeight: sanitizeText(entry?.plantHeight),
       images: Array.isArray(entry?.images) ? entry.images.filter(Boolean) : [],
     });
-    seenLabels.add(normalizedLabel);
+    seenOptions.add(normalizedOptionKey);
   });
 
   return normalizedVariants;
